@@ -1,0 +1,21 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "pwa-node",
+            "request": "launch",
+            "name": "Server",
+            "preLaunchTask": "build",
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "program": "${workspaceFolder}\\build\\server\\app.js",
+            "outFiles": [
+                "${workspaceFolder}/**/*.js"
+            ],
+            "outputCapture": "std",
+            "sourceMaps": true,
+            "runtimeArgs": ["--enable-source-maps"]
+        }
+    ]
+}

@@ -1,0 +1,27 @@
+{
+    "compilerOptions": {
+        "target": "ES2022",
+        "sourceMap": true,
+        "strict": true,
+        "importsNotUsedAsValues": "error",
+        "useUnknownInCatchVariables": false,
+        "removeComments": true,
+        "composite": true,
+        "incremental": true,
+        "esModuleInterop": true,
+        "moduleResolution": "node",
+        "resolveJsonModule": true,
+        "isolatedModules": true,
+        "paths": {
+            "common/*": ["./common/*"]
+        },
+        "rootDir": ".",
+        "outDir": "../build/"
+    },
+    "jsx": "react",
+    "lib": [
+        "dom",
+        "es2015",
+        "node"
+    ],
+}

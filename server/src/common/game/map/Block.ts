@@ -1,24 +1,15 @@
-import assert from 'assert';
-import { BlockMaterial } from '../materials/BlockMaterial';
+import type { BlockMaterialReference } from '../materials/BlockMaterialReference';
 
-export class Block {
-    constructor(material: BlockMaterial) {
-        this.material = material;
-    }
+export type Block = {
+    materialReference: BlockMaterialReference;
+};
 
-    readonly material: BlockMaterial;
+export const BlockFunctions = {
+    create
+};
 
-    static fromJSON(json: any) {
-        assert(typeof json === 'object');
-        assert(typeof json._type === this.name);
-        assert(typeof json.material === 'object');
-        return new Block(BlockMaterial.fromJSON(json.material));
-    }
-
-    toJson() {
-        return {
-            _type: this.constructor.name,
-            material: this.material.toJson(),
-        };
-    }
+function create(materialReference: BlockMaterialReference): Block {
+    return {
+        materialReference
+    };
 }

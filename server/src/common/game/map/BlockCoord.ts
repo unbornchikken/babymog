@@ -1,90 +1,111 @@
 import assert from 'assert';
 import * as BABYLON from 'babylonjs';
 
-export class BlockCoord {
-    constructor(vec: BABYLON.Vector3);
-    constructor(x: number, z: number);
-    constructor(x: number, y: number, z?: number);
-    constructor(arg1: number | BABYLON.Vector3, arg2?: number, arg3?: number) {
-        this.x = 0;
-        this.y = 0;
-        this.z = 0;
+export type BlockCoord = {
+    x: number;
+    y: number;
+    z: number;
+};
 
-        if (typeof arg1 === 'object') {
-            this.x = Math.floor(arg1.x);
-            this.y = Math.floor(arg1.y);
-            this.z = Math.floor(arg1.z);
-        }
-        else if (arg3 !== undefined) {
-            assert(arg2 !== undefined);
-            this.x = Math.floor(arg1);
-            this.y = Math.floor(arg2);
-            this.z = Math.floor(arg3);
-        }
-        else {
-            assert(arg2 !== undefined);
-            this.x = Math.floor(arg1);
-            this.z = Math.floor(arg2);
-        }
+export const BlockCoordFunctions = {
+    create,
+    zero,
+    getVec,
+    getXZ,
+    getLeft,
+    getRight,
+    getFront,
+    getBack,
+    equals,
+    toString,
+};
+
+function create(vec: BABYLON.Vector3): BlockCoord;
+function create(x: number, z: number): BlockCoord;
+function create(x: number, y: number, z?: number): BlockCoord;
+function create(arg1: number | BABYLON.Vector3, arg2?: number, arg3?: number): BlockCoord {
+    const coords = {
+        x: 0,
+        y: 0,
+        z: 0,
+    };
+
+    if (typeof arg1 === 'object') {
+        coords.x = Math.floor(arg1.x);
+        coords.y = Math.floor(arg1.y);
+        coords.z = Math.floor(arg1.z);
+    }
+    else if (arg3 !== undefined) {
+        assert(arg2 !== undefined);
+        coords.x = Math.floor(arg1);
+        coords.y = Math.floor(arg2);
+        coords.z = Math.floor(arg3);
+    }
+    else {
+        assert(arg2 !== undefined);
+        coords.x = Math.floor(arg1);
+        coords.z = Math.floor(arg2);
     }
 
-    readonly x: number;
+    return coords;
+}
 
-    readonly y: number;
+function zero(): BlockCoord {
+    return {
+        x: 0,
+        y: 0,
+        z: 0,
+    };
+}
 
-    readonly z: number;
+function getVec(coord: BlockCoord) {
+    return new BABYLON.Vector3(coord.x, coord.y, coord.z);
+}
 
-    static get zero() {
-        return new BlockCoord(0, 0);
-    }
+function getXZ(coord: BlockCoord): BlockCoord {
+    return {
+        x: coord.x,
+        y: 0,
+        z: coord.z,
+    };
+}
 
-    get vec() {
-        return new BABYLON.Vector3(this.x, this.y, this.z);
-    }
+function getLeft(coord: BlockCoord): BlockCoord {
+    return {
+        x: coord.x - 1,
+        y: 0,
+        z: coord.z,
+    };
+}
 
-    get xy() {
-        return new BlockCoord(this.x, this.z);
-    }
+function getRight(coord: BlockCoord): BlockCoord {
+    return {
+        x: coord.x + 1,
+        y: 0,
+        z: coord.z,
+    };
+}
 
-    get left() {
-        return new BlockCoord(this.x - 1, this.z);
-    }
+function getFront(coord: BlockCoord): BlockCoord {
+    return {
+        x: coord.x,
+        y: 0,
+        z: coord.z + 1,
+    };
+}
 
-    get right() {
-        return new BlockCoord(this.x + 1, this.z);
-    }
+function getBack(coord: BlockCoord): BlockCoord {
+    return {
+        x: coord.x,
+        y: 0,
+        z: coord.z - 1,
+    };
+}
 
-    get front() {
-        return new BlockCoord(this.x, this.z + 1);
-    }
+function equals(coord1: BlockCoord, coord2: BlockCoord) {
+    return coord1.x === coord2.x && coord1.y === coord2.y && coord1.z === coord2.z;
+}
 
-    get back() {
-        return new BlockCoord(this.x, this.z - 1);
-    }
-
-    toString() {
-        return `${this.x},${this.y},${this.z}`;
-    }
-
-    equals(other: BlockCoord) {
-        return this.x === other.x && this.y === other.y && this.z === other.z;
-    }
-
-    static fromJSON(json: any) {
-        assert(typeof json === 'object');
-        assert(typeof json._type === this.name);
-        assert(typeof json.x === 'number');
-        assert(typeof json.y === 'number');
-        assert(typeof json.z === 'number');
-        return new BlockCoord(json.x, json.y, json.z);
-    }
-
-    toJson() {
-        return {
-            _type: this.constructor.name,
-            x: this.x,
-            y: this.y,
-            z: this.z,
-        };
-    }
+function toString(coord: BlockCoord) {
+    return `${coord.x},${coord.y},${coord.z}`;
 }

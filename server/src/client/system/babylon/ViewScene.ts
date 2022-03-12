@@ -39,7 +39,7 @@ export class ViewScene extends LoggerObject {
 
         this._canvas = document.getElementById(this.canvasId) as HTMLCanvasElement || undefined;
         if (!this._canvas) {
-            throw new Error(`Canvas by id "${ this.canvasId }" not found.`);
+            throw new Error(`Canvas by id "${this.canvasId}" not found.`);
         }
 
         this._engine = new BABYLON.Engine(this._canvas, true);
@@ -48,7 +48,10 @@ export class ViewScene extends LoggerObject {
 
         this.logger.debug('Scene has been created in canvas "%s".', this.canvasId);
 
-        this._engine.runRenderLoop(() => this._scene!.render());
+        this._engine.runRenderLoop(() => {
+            this._scene!.render();
+            document.getElementById('fps')!.innerHTML = this._engine!.getFps().toFixed() + ' fps';
+        });
 
         window.addEventListener('resize', () => this._engine!.resize());
     }

@@ -1,5 +1,4 @@
 import fg from 'fast-glob';
-import { InternalError } from '../errors/InternalError';
 import fs from 'fs-extra';
 import crypto from 'crypto';
 import path from 'path';
@@ -7,6 +6,7 @@ import { fsHelpers } from './fsHelpers';
 import type { Logger } from 'pino';
 import assert from 'assert';
 import { execHelpers } from './execHelpers';
+import { InternalError } from 'common/system/errors/InternalError';
 
 const DEF_SIZE = 64;
 

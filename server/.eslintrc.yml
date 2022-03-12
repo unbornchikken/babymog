@@ -1,7 +1,7 @@
 env:
   browser: true
   es2021: true
-ignorePatterns:  [/webpack.config.js]
+ignorePatterns: []
 extends:
   - eslint:recommended
   - plugin:@typescript-eslint/recommended

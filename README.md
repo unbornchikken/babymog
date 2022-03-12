@@ -1,2 +1,3 @@
-# babymog
-Babylon.js Multiplayer Online Game
+# Babylon.js Multiplayer Online Game
+
+Just a prototype project for fun.

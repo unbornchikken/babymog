@@ -6,7 +6,7 @@ export type Pile = {
     layers: PileLayer[],
 };
 
-export const PileFunctions = {
+export const pileFunctions = {
     create,
     getTopYCoord,
     tryGetLayer,

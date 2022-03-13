@@ -34,7 +34,7 @@ export type BlockMaterialPack = {
     materials: BlockMaterial[],
 };
 
-export const BlockMaterialPackFunctions = {
+export const blockMaterialPackFunctions = {
     create,
     getTextures,
     getMaterial,
@@ -44,7 +44,7 @@ export const BlockMaterialPackFunctions = {
 function create(id: string, materials: BlockMaterial[], defaultMaterialId?: string): BlockMaterialPack {
     return {
         id,
-        defaultMaterialId: defaultMaterialId ?? knownMaterials.crust,
+        defaultMaterialId: defaultMaterialId ?? knownMaterials.block.crust,
         materials,
     };
 }

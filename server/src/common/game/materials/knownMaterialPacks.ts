@@ -1,3 +1,5 @@
 export const knownMaterialPacks = {
-    standard: 'standard'
+    block: {
+        standard: 'standard'
+    }
 };

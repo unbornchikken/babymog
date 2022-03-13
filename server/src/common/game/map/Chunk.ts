@@ -1,6 +1,6 @@
 import assert from 'assert';
 import { InternalError } from 'common/system/errors/InternalError';
-import { BlockCoord, BlockCoordFunctions } from './BlockCoord';
+import { BlockCoord, blockCoordFunctions } from './BlockCoord';
 import type { Pile } from './Pile';
 
 export const CHUNK_SIZE = 16;
@@ -10,7 +10,7 @@ export type Chunk = {
     piles: Pile[],
 };
 
-export const ChunkFunctions = {
+export const chunkFunctions = {
     create,
     getPile,
     tryGetPile,
@@ -30,7 +30,7 @@ function create(coord: BlockCoord, piles: Pile[]): Chunk {
 function getPile(chunk: Chunk, coord: BlockCoord): Pile {
     const pile = tryGetPile(chunk, coord);
     if (!pile) {
-        throw new InternalError(`Pile not found at "${BlockCoordFunctions.toString(coord)}" in chunk "${BlockCoordFunctions.toString(chunk.coord)}".`);
+        throw new InternalError(`Pile not found at "${blockCoordFunctions.toString(coord)}" in chunk "${blockCoordFunctions.toString(chunk.coord)}".`);
     }
     return pile;
 }
@@ -67,7 +67,7 @@ function pileCoordToChunkCoord(arg: Pile | BlockCoord): BlockCoord {
         coord = arg;
     }
 
-    return BlockCoordFunctions.create(conv(coord.x), conv(coord.y));
+    return blockCoordFunctions.create(conv(coord.x), conv(coord.y));
 
     function conv(value: number) {
         if (value == 0) {

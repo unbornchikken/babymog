@@ -4,7 +4,7 @@ export type Block = {
     materialReference: BlockMaterialReference;
 };
 
-export const BlockFunctions = {
+export const blockFunctions = {
     create
 };
 

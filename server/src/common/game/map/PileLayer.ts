@@ -5,7 +5,7 @@ export type PileLayer = {
     block: Block,
 };
 
-export const PileLayerFunctions = {
+export const pileLayerFunctions = {
     create,
 };
 

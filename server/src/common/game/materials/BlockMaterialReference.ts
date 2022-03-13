@@ -5,7 +5,7 @@ export type BlockMaterialReference = {
     materialId: string;
 };
 
-export const BlockMaterialReferenceFunctions = {
+export const blockMaterialReferenceFunctions = {
     create
 };
 

@@ -7,7 +7,7 @@ export type BlockCoord = {
     z: number;
 };
 
-export const BlockCoordFunctions = {
+export const blockCoordFunctions = {
     create,
     zero,
     getVec,

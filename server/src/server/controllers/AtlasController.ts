@@ -2,8 +2,11 @@ import type { Container } from 'common/system/ioc/Container';
 import { LoggerObject } from 'common/system/log/LoggerObject';
 import { AtlasGenerator } from '../system/utils/AtlasGenerator';
 import path from 'path';
-import { MaterialDataManager } from '../game/materials/MaterialDataManager';
+import type { MaterialDataManager } from '../game/materials/MaterialDataManager';
 import { knownAtlasCollections } from 'common/game/materials/knownAtlasCollections';
+import { BlockMaterialPack, blockMaterialPackFunctions } from 'common/game/materials/BlockMaterialPack';
+import assert from 'assert';
+import { RequestError } from '../system/errors/RequestError';
 
 const TEXTURES_PATH = path.resolve(path.join(__dirname, '../../resources/textures'));
 
@@ -29,15 +32,37 @@ export class AtlasController extends LoggerObject {
 
     private outDir: string;
 
+    private getMaterialDataManager() {
+        return this.container.get<MaterialDataManager>('MaterialDataManager');
+    }
+
     async createResultFile(collection: string | undefined, atlasId: string, size: number | undefined, resultType: AtlasResultType) {
         if (atlasId === 'sample-box') {
             return await this.createResultFileFromPatterns(SAMPLE_BOX_FILES, size, resultType);
         }
 
-        const dataMan = this.container.get<MaterialDataManager>('MaterialDataManager');
         if (collection === knownAtlasCollections.blockMaterialPacks) {
-            const packs = await dataMan.getBlockMaterialPacks(atlasId.split('|'));
+            const packs = await this.getMaterialDataManager().getBlockMaterialPacks(atlasId.split('|'));
+            const textures = this.collectTextures(packs);
+            const files = [];
+            for (const texture of textures) {
+                files.push(path.join(TEXTURES_PATH, texture));
+            }
+            assert(files.length);
+            return await this.createResultFileFromPatterns(files, size, resultType);
         }
+
+        throw new RequestError(`Unknown texture atlas (collection: "${ collection ?? ''}", atlasId: "${ atlasId }").`);
+    }
+
+    private collectTextures(packs: BlockMaterialPack[]) {
+        const textures = new Set<string>();
+        for (const pack of packs) {
+            for (const texture of blockMaterialPackFunctions.getTextures(pack)) {
+                textures.add(texture);
+            }
+        }
+        return textures;
     }
 
     private async createResultFileFromPatterns(patterns: string[], size: number | undefined, resultType: AtlasResultType) {

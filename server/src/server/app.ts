@@ -8,6 +8,7 @@ import { expressErrorHandler } from './system/errors/expressErrorHandler';
 import path from 'path';
 import { Container } from 'common/system/ioc/Container';
 import { MaterialDataManager } from './game/materials/MaterialDataManager';
+import { MaterialsApi } from './routes/MaterialsApi';
 
 const GENERATED_CONTENT_MAX_AGE = 2592000000; // 30 days
 const PORT = 3000;
@@ -59,6 +60,7 @@ app.get('/', (_, res) => res.sendFile(path.join(__dirname, '../../build/client/i
 
 // API
 new AtlasApi(container).registerRoutes();
+new MaterialsApi(container).registerRoutes();
 
 // Staitc
 app.use(express.static('build/client'));

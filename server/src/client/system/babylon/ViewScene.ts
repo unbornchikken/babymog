@@ -1,4 +1,3 @@
-import * as BABYLON from 'babylonjs';
 import type { Container } from 'common/system/ioc/Container';
 import { LoggerObject } from 'common/system/log/LoggerObject';
 

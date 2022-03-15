@@ -39,6 +39,12 @@ export const blockMaterialPackFunctions = {
     getTextures,
     getMaterial,
     tryGetMaterial,
+    getTopTexture,
+    getBottomTexture,
+    getLeftTexture,
+    getRightTexture,
+    getFrontTexture,
+    getBackTexture,
 };
 
 function create(id: string, materials: BlockMaterial[], defaultMaterialId?: string): BlockMaterialPack {
@@ -89,4 +95,70 @@ function tryGetMaterial(pack: BlockMaterialPack, id: string): BlockMaterial | un
         }
     }
     return def;
+}
+
+function getTopTexture(material: BlockMaterial) {
+    switch (material.type) {
+        case 'detailed':
+            return material.topTexture;
+        case 'homogene':
+            return material.texture;
+        case 'prismatic':
+            return material.topTexture;
+    }
+}
+
+function getBottomTexture(material: BlockMaterial) {
+    switch (material.type) {
+        case 'detailed':
+            return material.bottomTexture;
+        case 'homogene':
+            return material.texture;
+        case 'prismatic':
+            return material.bottomTexture;
+    }
+}
+
+function getLeftTexture(material: BlockMaterial) {
+    switch (material.type) {
+        case 'detailed':
+            return material.leftTexture;
+        case 'homogene':
+            return material.texture;
+        case 'prismatic':
+            return material.sideTexture;
+    }
+}
+
+function getRightTexture(material: BlockMaterial) {
+    switch (material.type) {
+        case 'detailed':
+            return material.rightTexture;
+        case 'homogene':
+            return material.texture;
+        case 'prismatic':
+            return material.sideTexture;
+    }
+}
+
+function getFrontTexture(material: BlockMaterial) {
+    switch (material.type) {
+        case 'detailed':
+            return material.frontTexture;
+        case 'homogene':
+            return material.texture;
+        case 'prismatic':
+            return material.sideTexture;
+    }
+}
+
+function getBackTexture(material: BlockMaterial) {
+    switch (material.type) {
+        case 'detailed':
+            return material.backTexture;
+        case 'homogene':
+            return material.texture;
+        case 'prismatic':
+            return material.sideTexture;
+    }
 }

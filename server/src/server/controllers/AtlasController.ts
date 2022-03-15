@@ -42,8 +42,8 @@ export class AtlasController extends LoggerObject {
         }
 
         if (collection === knownAtlasCollections.blockMaterialPacks) {
-            const packs = await this.getMaterialDataManager().getBlockMaterialPacks(atlasId.split('|'));
-            const textures = this.collectTextures(packs);
+            const pack = await this.getMaterialDataManager().getBlockMaterialPack(atlasId);
+            const textures = this.collectTextures(pack);
             const files = [];
             for (const texture of textures) {
                 files.push(path.join(TEXTURES_PATH, texture));
@@ -55,12 +55,10 @@ export class AtlasController extends LoggerObject {
         throw new RequestError(`Unknown texture atlas (collection: "${ collection ?? ''}", atlasId: "${ atlasId }").`);
     }
 
-    private collectTextures(packs: BlockMaterialPack[]) {
+    private collectTextures(pack: BlockMaterialPack) {
         const textures = new Set<string>();
-        for (const pack of packs) {
-            for (const texture of blockMaterialPackFunctions.getTextures(pack)) {
-                textures.add(texture + '.png');
-            }
+        for (const texture of blockMaterialPackFunctions.getTextures(pack)) {
+            textures.add(texture + '.png');
         }
         return textures;
     }

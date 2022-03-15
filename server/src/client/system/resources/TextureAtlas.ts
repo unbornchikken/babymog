@@ -1,6 +1,5 @@
 import type { Container } from 'common/system/ioc/Container';
 import { LoggerObject } from 'common/system/log/LoggerObject';
-import * as BABYLON from 'babylonjs';
 import assert from 'assert';
 import { InternalError } from 'common/system/errors/InternalError';
 import type { AtlasResult } from 'common/game/materials/AtlasResult';

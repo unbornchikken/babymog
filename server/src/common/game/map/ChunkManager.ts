@@ -2,7 +2,7 @@ import assert from 'assert';
 import { LoggerObject } from 'common/system/log/LoggerObject';
 import { BlockCoord, blockCoordFunctions } from './BlockCoord';
 import { chunkFunctions } from './Chunk';
-import type { ChunkIO } from './ChunkIO';
+import type { ChunkDataInterface } from './ChunkDataInterface';
 import type { Pile } from './Pile';
 
 export type SorroundingPiles = {
@@ -12,13 +12,13 @@ export type SorroundingPiles = {
     backPile: Pile,
 };
 
-export class ChunkManager extends LoggerObject implements ChunkIO {
-    getChunkIO() {
-        return this.container.get<ChunkIO>('ChunkIO');
+export class ChunkManager extends LoggerObject implements ChunkDataInterface {
+    getChunkDataManager() {
+        return this.container.get<ChunkDataInterface>('ChunkDataInterface');
     }
 
     async getChunk(coord: BlockCoord) {
-        return await this.getChunkIO().getChunk(coord);
+        return await this.getChunkDataManager().getChunk(coord);
     }
 
     async getPile(coord: BlockCoord) {

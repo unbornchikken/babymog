@@ -5,33 +5,30 @@ import { knownMaterials } from 'common/game/materials/knownMaterials';
 import { LoggerObject } from 'common/system/log/LoggerObject';
 
 export class MaterialDataManager extends LoggerObject {
-    async getBlockMaterialPacks(ids: string[]) {
-        assert(ids.length === 1, 'Only one material id is currenly supported.');
-        assert(ids[0] === knownMaterialPacks.block.standard, 'Only "standard" material pack is supported.');
+    async getBlockMaterialPack(id: string) {
+        assert(id === knownMaterialPacks.block.standard, 'Only "standard" material pack is supported.');
 
-        return [
-            blockMaterialPackFunctions.create(
-                knownMaterialPacks.block.standard,
-                [
-                    {
-                        id: knownMaterials.block.top,
-                        type: 'prismatic',
-                        topTexture: 'block/Grass',
-                        sideTexture: 'block/Grass_Side',
-                        bottomTexture: 'block/Ground',
-                    },
-                    {
-                        id: knownMaterials.block.topFilled,
-                        type: 'homogene',
-                        texture: 'block/Grass',
-                    },
-                    {
-                        id: knownMaterials.block.crust,
-                        type: 'homogene',
-                        texture: 'block/Ground',
-                    }
-                ]
-            )
-        ];
+        return blockMaterialPackFunctions.create(
+            knownMaterialPacks.block.standard,
+            [
+                {
+                    id: knownMaterials.block.top,
+                    type: 'prismatic',
+                    topTexture: 'block/Grass',
+                    sideTexture: 'block/Grass_Side',
+                    bottomTexture: 'block/Ground',
+                },
+                {
+                    id: knownMaterials.block.topFilled,
+                    type: 'homogene',
+                    texture: 'block/Grass',
+                },
+                {
+                    id: knownMaterials.block.crust,
+                    type: 'homogene',
+                    texture: 'block/Ground',
+                }
+            ]
+        );
     }
 }

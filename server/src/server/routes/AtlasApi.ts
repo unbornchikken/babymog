@@ -7,6 +7,8 @@ import type { Container } from 'common/system/ioc/Container';
 
 const TTL = 60; // 1 min
 
+export type RequestFunction = (req: Request, res: Response, next: NextFunction) => Promise<void>;
+
 export class AtlasApi extends ApiRoute {
     constructor(container: Container) {
         super(container, 'atlas');
@@ -17,22 +19,33 @@ export class AtlasApi extends ApiRoute {
     private controller: AtlasController;
 
     registerRoutes() {
-        this.app.get(this.makeRoute('/sample-box'), async (req, res, next) => await this.atlasApi(req, res, next, undefined, 'sample-box'));
-        this.app.get(this.makeRoute('/:collection/:id'), async (req, res, next) => await this.atlasApi(req, res, next, req.params.collection, req.params.id));
+        this.app.get(this.makeRoute('/sample-box'), this.atlasApi('sample-box'));
+        this.app.get(this.makeRoute('/:collection/:id'), this.atlasApi());
     }
 
-    private async atlasApi(req: Request, res: Response, next: NextFunction, collection: string | undefined, atlasId: string) {
-        try {
-            const size = typeof req.query.size === 'string' ? parseInt(req.query.size) : undefined;
-            if (size !== undefined && !(size > 0)) {
-                throw new RequestError('"size" is invalid.');
+    private atlasApi(id?: string): RequestFunction {
+        return async (req, res, next) => {
+            try {
+                let collection: string | undefined;
+                let atlasId: string;
+                if (id !== undefined) {
+                    atlasId = id;
+                }
+                else {
+                    collection = req.params.collection;
+                    atlasId = req.params.id;
+                }
+                const size = typeof req.query.size === 'string' ? parseInt(req.query.size) : undefined;
+                if (size !== undefined && !(size > 0)) {
+                    throw new RequestError('"size" is invalid.');
+                }
+                const result = await this.controller.createResult(collection, atlasId, size);
+                res.header('Cache-Control', `public, max-age=${ TTL }`);
+                res.json(result);
             }
-            const result = await this.controller.createResult(collection, atlasId, size);
-            res.header('Cache-Control', `public, max-age=${ TTL }`);
-            res.json(result);
-        }
-        catch (err) {
-            next(err);
-        }
+            catch (err) {
+                next(err);
+            }
+        };
     }
 }

@@ -1,7 +1,7 @@
 import { blockFunctions } from 'common/game/map/Block';
 import { BlockCoord, blockCoordFunctions } from 'common/game/map/BlockCoord';
 import { Chunk, chunkFunctions, CHUNK_SIZE } from 'common/game/map/Chunk';
-import type { ChunkIO } from 'common/game/map/ChunkIO';
+import type { ChunkDataInterface } from 'common/game/map/ChunkDataInterface';
 import { Pile, pileFunctions } from 'common/game/map/Pile';
 import { PileLayer, pileLayerFunctions } from 'common/game/map/PileLayer';
 import { blockMaterialReferenceFunctions } from 'common/game/materials/BlockMaterialReference';
@@ -13,7 +13,7 @@ import SimplexNoise from 'simplex-noise';
 const DEPTH = 100;
 const HEIGHT = 100;
 
-export class HackChunkIO implements ChunkIO {
+export class HackChunkDataInterface implements ChunkDataInterface {
     private readonly chunks: Map<string, Chunk> = new Map();
 
     private readonly noise = new SimplexNoise(1978);

@@ -4,10 +4,33 @@ import type { Container } from 'common/system/ioc/Container';
 import { LoggerObject } from 'common/system/log/LoggerObject';
 import { TextureAtlas } from '../../system/resources/TextureAtlas';
 
-type Entry = {
+type AtlasEntry = {
     id: string,
     atlas: TextureAtlas,
     latAccess: number,
+};
+
+type PackEntry = {
+    id: string,
+    pack: BlockMaterialPack,
+    latAccess: number,
+};
+
+type BlockMaterialPackUVs = {
+    [texture: string]: {
+        top: BABYLON.Vector4,
+        bottom: BABYLON.Vector4,
+        left: BABYLON.Vector4,
+        right: BABYLON.Vector4,
+        front: BABYLON.Vector4,
+        back: BABYLON.Vector4,
+    }
+};
+
+export type BlockMaterialPackInfo = {
+    atlasImageUrl: string,
+    pack: BlockMaterialPack,
+    uvs: BlockMaterialPackUVs
 };
 
 export type BlockMaterialManagerOptions = {
@@ -24,23 +47,76 @@ export class BlockMaterialManager extends LoggerObject {
 
     readonly textureSize?: number;
 
-    private readonly atlases = new Map<string, Entry>();
+    private readonly atlases = new Map<string, AtlasEntry>();
 
-    getAtlasPacks(packIds: string[]) {
-        packIds.sort();
-        const combinedAtlasId = packIds.join('|');
+    private readonly packs = new Map<string, PackEntry>();
 
-        let entry = this.atlases.get(combinedAtlasId);
+    async getPackInfo(packId: string): Promise<BlockMaterialPackInfo> {
+        const atlas = this.getPackAtlas(packId);
+        const pack = await this.getPack(packId);
+
+        return {
+            pack,
+            atlasImageUrl: await atlas.getImageUrl(),
+            uvs: await this.getUVs(atlas, pack)
+        };
+    }
+
+    async getUVs(atlas: TextureAtlas, pack: BlockMaterialPack): Promise<BlockMaterialPackUVs> {
+        const uvs: BlockMaterialPackUVs = {};
+
+        for (const material of pack.materials) {
+            uvs[material.id] = {
+                top: await atlas.getTextureUVs(blockMaterialPackFunctions.getTopTexture(material)),
+                bottom: await atlas.getTextureUVs(blockMaterialPackFunctions.getBottomTexture(material)),
+                left: await atlas.getTextureUVs(blockMaterialPackFunctions.getLeftTexture(material)),
+                right: await atlas.getTextureUVs(blockMaterialPackFunctions.getRightTexture(material)),
+                front: await atlas.getTextureUVs(blockMaterialPackFunctions.getFrontTexture(material)),
+                back: await atlas.getTextureUVs(blockMaterialPackFunctions.getBackTexture(material)),
+            };
+        }
+
+        return uvs;
+    }
+
+    private getPackAtlas(packId: string) {
+        let entry = this.atlases.get(packId);
         if (!entry) {
             entry = {
-                id: combinedAtlasId,
+                id: packId,
                 latAccess: Date.now(),
                 atlas: new TextureAtlas({
                     container: this.container,
-                    id: combinedAtlasId,
+                    id: packId,
                     collection: knownAtlasCollections.blockMaterialPacks,
                 })
             };
+            this.atlases.set(packId, entry);
         }
+        else {
+            entry.latAccess = Date.now();
+        }
+        return entry.atlas;
+    }
+
+    private async getPack(packId: string) {
+        let entry = this.packs.get(packId);
+        if (!entry) {
+            entry = {
+                id: packId,
+                latAccess: Date.now(),
+                pack: await this.getPackFromApi(packId)
+            };
+            this.packs.set(packId, entry);
+        }
+        else {
+            entry.latAccess = Date.now();
+        }
+        return entry.pack;
+    }
+
+    private async getPackFromApi(packId: string) {
+        const response = await fetch('api/materials/block-material-pack/' + packId);
+        return await response.json();
     }
 }

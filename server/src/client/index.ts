@@ -1,4 +1,3 @@
-import * as BABYLON from 'babylonjs';
 import { Container } from 'common/system/ioc/Container';
 import pino, { Logger } from 'pino';
 import { TextureAtlas } from './system/resources/TextureAtlas';

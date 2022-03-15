@@ -9,6 +9,7 @@ import path from 'path';
 import { Container } from 'common/system/ioc/Container';
 import { MaterialDataManager } from './game/materials/MaterialDataManager';
 
+const GENERATED_CONTENT_MAX_AGE = 2592000000; // 30 days
 const PORT = 3000;
 
 const container = new Container();
@@ -61,7 +62,7 @@ new AtlasApi(container).registerRoutes();
 
 // Staitc
 app.use(express.static('build/client'));
-app.use('/generated', express.static('generated'));
+app.use('/generated', express.static('generated', { maxAge: GENERATED_CONTENT_MAX_AGE}));
 
 // Error
 app.use(expressErrorHandler.handleError(container));

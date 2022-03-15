@@ -7,6 +7,8 @@ import { knownAtlasCollections } from 'common/game/materials/knownAtlasCollectio
 import { BlockMaterialPack, blockMaterialPackFunctions } from 'common/game/materials/BlockMaterialPack';
 import assert from 'assert';
 import { RequestError } from '../system/errors/RequestError';
+import fs from 'fs-extra';
+import type { AtlasResult } from 'common/game/materials/AtlasResult';
 
 const TEXTURES_PATH = path.resolve(path.join(__dirname, '../../resources/textures'));
 
@@ -19,9 +21,7 @@ const SAMPLE_BOX_FILES = [
     path.resolve(path.join(TEXTURES_PATH, 'block/Right.png')),
 ];
 
-const OUT_DIR = 'generated/atlas';
-
-export type AtlasResultType = 'image' | 'metadata';
+const OUT_DIR = 'generated/textures/atlas';
 
 export class AtlasController extends LoggerObject {
     constructor(container: Container, outDir: string = OUT_DIR) {
@@ -36,9 +36,9 @@ export class AtlasController extends LoggerObject {
         return this.container.get<MaterialDataManager>('MaterialDataManager');
     }
 
-    async createResultFile(collection: string | undefined, atlasId: string, size: number | undefined, resultType: AtlasResultType) {
+    async createResult(collection: string | undefined, atlasId: string, size: number | undefined) {
         if (atlasId === 'sample-box') {
-            return await this.createResultFileFromPatterns(SAMPLE_BOX_FILES, size, resultType);
+            return await this.createResultFromPatterns(collection, atlasId, SAMPLE_BOX_FILES, size);
         }
 
         if (collection === knownAtlasCollections.blockMaterialPacks) {
@@ -49,7 +49,7 @@ export class AtlasController extends LoggerObject {
                 files.push(path.join(TEXTURES_PATH, texture));
             }
             assert(files.length);
-            return await this.createResultFileFromPatterns(files, size, resultType);
+            return await this.createResultFromPatterns(collection, atlasId, files, size);
         }
 
         throw new RequestError(`Unknown texture atlas (collection: "${ collection ?? ''}", atlasId: "${ atlasId }").`);
@@ -59,31 +59,34 @@ export class AtlasController extends LoggerObject {
         const textures = new Set<string>();
         for (const pack of packs) {
             for (const texture of blockMaterialPackFunctions.getTextures(pack)) {
-                textures.add(texture);
+                textures.add(texture + '.png');
             }
         }
         return textures;
     }
 
-    private async createResultFileFromPatterns(patterns: string[], size: number | undefined, resultType: AtlasResultType) {
+    private async createResultFromPatterns(collection: string | undefined, atlasId: string, patterns: string[], size: number | undefined): Promise<AtlasResult> {
+        if (collection) {
+            atlasId = collection + '/' + atlasId;
+        }
         const gen = new AtlasGenerator({
-            id: 'sample-box',
+            id: atlasId,
             logger: this.logger,
             outDir: this.outDir,
             patterns,
             size
         });
         const genResult = await gen.generate();
-        let resultFilePath: string;
-        let contentType: string;
-        if (resultType === 'image') {
-            resultFilePath = genResult.imagePath;
-            contentType = 'image/png';
-        }
-        else {
-            resultFilePath = genResult.metadataPath;
-            contentType = 'application/json';
-        }
-        return { resultFilePath, contentType };
+
+        return {
+            imagePath: AtlasController.fixImagePath(genResult.imagePath),
+            textures: await fs.readJSON(genResult.metadataPath),
+        };
+    }
+
+    private static fixImagePath(imagePath: string) {
+        const parts = imagePath.replaceAll('\\', '/').split(OUT_DIR + '/');
+        assert(parts.length === 2);
+        return parts[1];
     }
 }

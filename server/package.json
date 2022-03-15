@@ -5,7 +5,7 @@
   "scripts": {
     "build": "webpack",
     "watch:build": "webpack --watch",
-    "watch:server": "nodemon --inspect ./build/server/app.js --watch ./build/server",
+    "watch:server": "nodemon --inspect --enable-source-maps ./build/server/app.js --watch ./build/server",
     "start": "npm-run-all --parallel watch:server watch:build",
     "clean": "rimraf ./build && rimraf ./generated",
     "lint": "eslint . --ext .ts",

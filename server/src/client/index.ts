@@ -34,7 +34,7 @@ const view = new ViewScene({
         const light = new BABYLON.HemisphericLight('light', new BABYLON.Vector3(1, 1, 0), scene);
 
         const mat = new BABYLON.StandardMaterial('mat', scene);
-        const texture = new BABYLON.Texture(atlas.urls.imageUrl, scene);
+        const texture = new BABYLON.Texture(await atlas.getImageUrl(), scene);
         mat.diffuseTexture = texture;
 
         const faceUV = new Array<BABYLON.Vector4>(6);
@@ -66,4 +66,6 @@ const view = new ViewScene({
     }
 });
 
-view.show().catch(function (err) { container.get<Logger>('logger').error(err, 'Showing view failed.'); });
+view.show().catch(err => {
+    container.get<Logger>('logger').error(err, 'Showing view failed.');
+});

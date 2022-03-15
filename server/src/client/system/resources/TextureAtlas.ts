@@ -3,6 +3,8 @@ import { LoggerObject } from 'common/system/log/LoggerObject';
 import * as BABYLON from 'babylonjs';
 import assert from 'assert';
 import { InternalError } from 'common/system/errors/InternalError';
+import type { AtlasResult } from 'common/game/materials/AtlasResult';
+import urljoin from 'url-join';
 
 export type TextureAtlasOptions = {
     container: Container,
@@ -16,15 +18,6 @@ export type TextureAtlasUrls = {
     metadataUrl: string,
 };
 
-export interface TextureAtlasMetadata {
-    [textureId: string]: {
-        x: number,
-        y: number,
-        width: number,
-        height: number,
-    };
-}
-
 export type TextureAtlasUVs = {
     [textureId: string]: BABYLON.Vector4
 };
@@ -36,29 +29,30 @@ export class TextureAtlas extends LoggerObject {
         this.collection = options.collection;
         this.id = options.id;
         this.size = options.size;
-        this.urls = this.getUrls();
     }
 
     public readonly collection?: string;
 
     public readonly id: string;
 
-    get title() {
+    get path() {
         return this.collection ? this.collection + '/' + this.id : this.id;
     }
 
     public readonly size?: number;
 
-    public readonly urls: TextureAtlasUrls;
-
-    private metadata?: TextureAtlasMetadata;
+    private apiResult?: AtlasResult;
 
     private uvs?: TextureAtlasUVs;
+
+    public async getImageUrl() {
+        return urljoin('generated/textures/atlas', (await this.getApiResult()).imagePath);
+    }
 
     public async getTextureUVs(textureId: string) {
         const uvs = await this.tryGetTextureUVs(textureId);
         if (uvs === undefined) {
-            throw new InternalError(`Texture "${ textureId }" not found in atlas "${ this.title }".`);
+            throw new InternalError(`Texture "${ textureId }" not found in atlas "${ this.path }".`);
         }
         return uvs;
     }
@@ -78,11 +72,11 @@ export class TextureAtlas extends LoggerObject {
             return this.uvs;
         }
 
-        const metadata = await this.getMetadata();
+        const apiResult = await this.getApiResult();
 
         let maxX = 0;
         let maxY = 0;
-        for (const coords of Object.values(metadata)) {
+        for (const coords of Object.values(apiResult.textures)) {
             const currentMaxX = coords.x + coords.width - 1;
             const currentMaxY = coords.y + coords.height - 1;
             if (currentMaxY > maxY) {
@@ -95,7 +89,7 @@ export class TextureAtlas extends LoggerObject {
 
         this.uvs = {};
         const D = 1;
-        for (const [id, coords] of Object.entries(metadata)) {
+        for (const [id, coords] of Object.entries(apiResult.textures)) {
             const x1 = coords.x + D;
             const x2 = coords.x + coords.width - 1 - D;
             const y1 = coords.y + coords.height - 1 - D;
@@ -118,28 +112,15 @@ export class TextureAtlas extends LoggerObject {
         }
     }
 
-    public async getMetadata() {
-        if (this.metadata) {
-            return this.metadata;
+    private async getApiResult() {
+        if (this.apiResult) {
+            return this.apiResult;
         }
-        const response = await fetch(this.urls.metadataUrl);
-        this.metadata = await response.json();
-        assert(this.metadata);
-        return this.metadata;
-    }
 
-    private getUrls() {
-        let imageUrl = 'api/atlas/' + this.title;
-        let metadataUrl = imageUrl + '/metadata';
-
-        const size = this.size ? `?size=${this.size}` : '';
-
-        imageUrl += size;
-        metadataUrl += size;
-
-        return {
-            imageUrl,
-            metadataUrl,
-        };
+        const url ='api/atlas/' + this.path;
+        const response = await fetch(url);
+        this.apiResult = await response.json();
+        assert(this.apiResult);
+        return this.apiResult;
     }
 }

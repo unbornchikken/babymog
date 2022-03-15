@@ -6,8 +6,8 @@ import { LoggerObject } from 'common/system/log/LoggerObject';
 
 export class MaterialDataManager extends LoggerObject {
     async getBlockMaterialPacks(ids: string[]) {
-        assert(ids.length === 1);
-        assert(ids[0] === knownMaterialPacks.block.standard);
+        assert(ids.length === 1, 'Only one material id is currenly supported.');
+        assert(ids[0] === knownMaterialPacks.block.standard, 'Only "standard" material pack is supported.');
 
         return [
             blockMaterialPackFunctions.create(

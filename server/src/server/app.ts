@@ -7,6 +7,7 @@ import { expressLogger } from '../common/system/log/expressLogger';
 import { expressErrorHandler } from './system/errors/expressErrorHandler';
 import path from 'path';
 import { Container } from 'common/system/ioc/Container';
+import { MaterialDataManager } from './game/materials/MaterialDataManager';
 
 const PORT = 3000;
 
@@ -29,6 +30,8 @@ container.register(
     'channels',
     c => new WebSocketChannels({ logger: c.get('logger'), httpServer: c.get('server') })
 );
+
+container.register('MaterialDataManager', c => new MaterialDataManager(c));
 
 container.register(
     'app',
@@ -58,8 +61,9 @@ new AtlasApi(container).registerRoutes();
 
 // Staitc
 app.use(express.static('build/client'));
+app.use('/generated', express.static('generated'));
 
 // Error
-app.use(expressErrorHandler.handleError());
+app.use(expressErrorHandler.handleError(container));
 
 channels.init();

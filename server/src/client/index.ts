@@ -2,6 +2,10 @@ import { Container } from 'common/system/ioc/Container';
 import pino, { Logger } from 'pino';
 import { TextureAtlas } from './system/resources/TextureAtlas';
 import { ViewScene } from './system/babylon/ViewScene';
+import { BlockMaterialManager } from './game/materials/BlockMaterialManager';
+import { knownMaterialPacks } from 'common/game/materials/knownMaterialPacks';
+import { knownAtlasCollections } from 'common/game/materials/knownAtlasCollections';
+import { knownMaterials } from 'common/game/materials/knownMaterials';
 
 const container = new Container();
 
@@ -21,10 +25,8 @@ const view = new ViewScene({
         const engine = view.getEngine();
         const canvas = view.getCanvas();
 
-        const atlas = new TextureAtlas({
-            container,
-            id: 'sample-box',
-        });
+        const blockMaterialManager = new BlockMaterialManager({ container });
+        const packInfo = await blockMaterialManager.getPackInfo(knownMaterialPacks.block.standard);
 
         const scene = new BABYLON.Scene(engine);
 
@@ -33,17 +35,17 @@ const view = new ViewScene({
         const light = new BABYLON.HemisphericLight('light', new BABYLON.Vector3(1, 1, 0), scene);
 
         const mat = new BABYLON.StandardMaterial('mat', scene);
-        const texture = new BABYLON.Texture(await atlas.getImageUrl(), scene);
+        const texture = new BABYLON.Texture(packInfo.atlasImageUrl, scene);
         mat.diffuseTexture = texture;
 
         const faceUV = new Array<BABYLON.Vector4>(6);
 
-        faceUV[0] = await atlas.getTextureUVs('Front');
-        faceUV[1] = await atlas.getTextureUVs('Back');
-        faceUV[2] = await atlas.getTextureUVs('Right');
-        faceUV[3] = await atlas.getTextureUVs('Left');
-        faceUV[4] = await atlas.getTextureUVs('Top');
-        faceUV[5] = await atlas.getTextureUVs('Bottom');
+        faceUV[0] = packInfo.uvs.top.front;
+        faceUV[1] = packInfo.uvs.top.back;
+        faceUV[2] = packInfo.uvs.top.right;
+        faceUV[3] = packInfo.uvs.top.left;
+        faceUV[4] = packInfo.uvs.top.top;
+        faceUV[5] = packInfo.uvs.top.bottom;
 
         const options = {
             faceUV: faceUV,

@@ -46,7 +46,7 @@ export class AtlasController extends LoggerObject {
             const textures = this.collectTextures(pack);
             const files = [];
             for (const texture of textures) {
-                files.push(path.join(TEXTURES_PATH, texture));
+                files.push(path.join(TEXTURES_PATH, 'block', texture));
             }
             assert(files.length);
             return await this.createResultFromPatterns(collection, atlasId, files, size);

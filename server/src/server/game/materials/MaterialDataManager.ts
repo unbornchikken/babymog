@@ -14,19 +14,19 @@ export class MaterialDataManager extends LoggerObject {
                 {
                     id: knownMaterials.block.top,
                     type: 'prismatic',
-                    topTexture: 'block/Grass',
-                    sideTexture: 'block/Grass_Side',
-                    bottomTexture: 'block/Ground',
+                    topTexture: 'Grass',
+                    sideTexture: 'Grass_Side',
+                    bottomTexture: 'Ground',
                 },
                 {
                     id: knownMaterials.block.topFilled,
                     type: 'homogene',
-                    texture: 'block/Grass',
+                    texture: 'Grass',
                 },
                 {
                     id: knownMaterials.block.crust,
                     type: 'homogene',
-                    texture: 'block/Ground',
+                    texture: 'Ground',
                 }
             ]
         );

@@ -1,5 +1,4 @@
 import fg from 'fast-glob';
-import { InternalError } from '../errors/InternalError';
 import fs from 'fs-extra';
 import crypto from 'crypto';
 import path from 'path';
@@ -7,6 +6,7 @@ import { fsHelpers } from './fsHelpers';
 import type { Logger } from 'pino';
 import assert from 'assert';
 import { execHelpers } from './execHelpers';
+import { InternalError } from 'common/system/errors/InternalError';
 
 const DEF_SIZE = 64;
 
@@ -54,7 +54,7 @@ export class AtlasGenerator {
         const imagePath = path.join(this.outDir, fileName + '.png');
         const metadataPath = path.join(this.outDir, fileName + '.json');
 
-        if (await fsHelpers.tryTouch(imagePath) && fsHelpers.tryTouch(metadataPath)) {
+        if (await fsHelpers.fileExists(imagePath) && fsHelpers.fileExists(metadataPath)) {
             return {
                 imagePath,
                 metadataPath
@@ -91,7 +91,7 @@ export class AtlasGenerator {
             hash.update(file.filePath);
             hash.update(String(file.lastModTime));
         }
-        return `${ this.id }_atlas_${ hash.digest('hex') }_${ this.size }`;
+        return `${ this.id }_${ hash.digest('hex') }_${ this.size }`;
     }
 
     private async getFiles() {

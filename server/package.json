@@ -5,7 +5,7 @@
   "scripts": {
     "build": "webpack",
     "watch:build": "webpack --watch",
-    "watch:server": "nodemon --inspect ./build/server/app.js --watch ./build/server",
+    "watch:server": "nodemon --inspect --enable-source-maps ./build/server/app.js --watch ./build/server",
     "start": "npm-run-all --parallel watch:server watch:build",
     "clean": "rimraf ./build && rimraf ./generated",
     "lint": "eslint . --ext .ts",
@@ -49,6 +49,7 @@
     "pino": "^7.8.0",
     "pino-pretty": "^7.5.3",
     "query-string": "^7.1.1",
+    "simplex-noise": "^3.0.1",
     "url-join": "^4.0.1",
     "ws": "^8.5.0"
   }

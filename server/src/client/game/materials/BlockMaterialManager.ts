@@ -1,4 +1,4 @@
-import { BlockMaterialPack, blockMaterialPackFunctions } from 'common/game/materials/BlockMaterialPack';
+import { BlockMaterial, BlockMaterialPack, blockMaterialPackFunctions } from 'common/game/materials/BlockMaterialPack';
 import { knownAtlasCollections } from 'common/game/materials/knownAtlasCollections';
 import type { Container } from 'common/system/ioc/Container';
 import { LoggerObject } from 'common/system/log/LoggerObject';
@@ -16,21 +16,21 @@ type PackEntry = {
     latAccess: number,
 };
 
-type BlockMaterialPackUVs = {
-    [texture: string]: {
-        top: BABYLON.Vector4,
-        bottom: BABYLON.Vector4,
-        left: BABYLON.Vector4,
-        right: BABYLON.Vector4,
-        front: BABYLON.Vector4,
-        back: BABYLON.Vector4,
-    }
+export type BlockMaterialUVs = {
+    top: BABYLON.Vector4,
+    bottom: BABYLON.Vector4,
+    left: BABYLON.Vector4,
+    right: BABYLON.Vector4,
+    front: BABYLON.Vector4,
+    back: BABYLON.Vector4,
 };
+
+export type GetBlockMaterialUVs = (materialId: string) => Promise<BlockMaterialUVs>;
 
 export type BlockMaterialPackInfo = {
     atlasImageUrl: string,
     pack: BlockMaterialPack,
-    uvs: BlockMaterialPackUVs
+    uvs: GetBlockMaterialUVs
 };
 
 export type BlockMaterialManagerOptions = {
@@ -58,25 +58,18 @@ export class BlockMaterialManager extends LoggerObject {
         return {
             pack,
             atlasImageUrl: await atlas.getImageUrl(),
-            uvs: await this.getUVs(atlas, pack)
+            uvs: async materialId => {
+                const material = blockMaterialPackFunctions.getMaterial(pack, materialId);
+                return {
+                    top: await atlas.getTextureUVs(blockMaterialPackFunctions.getTopTexture(material)),
+                    bottom: await atlas.getTextureUVs(blockMaterialPackFunctions.getBottomTexture(material)),
+                    left: await atlas.getTextureUVs(blockMaterialPackFunctions.getLeftTexture(material)),
+                    right: await atlas.getTextureUVs(blockMaterialPackFunctions.getRightTexture(material)),
+                    front: await atlas.getTextureUVs(blockMaterialPackFunctions.getFrontTexture(material)),
+                    back: await atlas.getTextureUVs(blockMaterialPackFunctions.getBackTexture(material)),
+                };
+            }
         };
-    }
-
-    async getUVs(atlas: TextureAtlas, pack: BlockMaterialPack): Promise<BlockMaterialPackUVs> {
-        const uvs: BlockMaterialPackUVs = {};
-
-        for (const material of pack.materials) {
-            uvs[material.id] = {
-                top: await atlas.getTextureUVs(blockMaterialPackFunctions.getTopTexture(material)),
-                bottom: await atlas.getTextureUVs(blockMaterialPackFunctions.getBottomTexture(material)),
-                left: await atlas.getTextureUVs(blockMaterialPackFunctions.getLeftTexture(material)),
-                right: await atlas.getTextureUVs(blockMaterialPackFunctions.getRightTexture(material)),
-                front: await atlas.getTextureUVs(blockMaterialPackFunctions.getFrontTexture(material)),
-                back: await atlas.getTextureUVs(blockMaterialPackFunctions.getBackTexture(material)),
-            };
-        }
-
-        return uvs;
     }
 
     private getPackAtlas(packId: string) {

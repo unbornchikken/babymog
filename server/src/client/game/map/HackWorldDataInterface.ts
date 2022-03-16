@@ -1,7 +1,7 @@
 import { blockFunctions } from 'common/game/map/Block';
 import { BlockCoord, blockCoordFunctions } from 'common/game/map/BlockCoord';
 import { Chunk, chunkFunctions, CHUNK_SIZE } from 'common/game/map/Chunk';
-import type { ChunkDataInterface } from 'common/game/map/ChunkDataInterface';
+import type { WorldDataInterface } from 'common/game/map/WorldDataInterface';
 import { Pile, pileFunctions } from 'common/game/map/Pile';
 import { PileLayer, pileLayerFunctions } from 'common/game/map/PileLayer';
 import { blockMaterialReferenceFunctions } from 'common/game/materials/BlockMaterialReference';
@@ -9,16 +9,25 @@ import { knownMaterialPacks } from 'common/game/materials/knownMaterialPacks';
 import { knownMaterials } from 'common/game/materials/knownMaterials';
 import { math } from 'common/system/math';
 import SimplexNoise from 'simplex-noise';
+import type { WorldMetadata } from 'common/game/map/WorldMetadata';
 
 const DEPTH = 100;
 const HEIGHT = 100;
 
-export class HackChunkDataInterface implements ChunkDataInterface {
+export class HackWorldDataInterface implements WorldDataInterface {
     private readonly chunks: Map<string, Chunk> = new Map();
 
     private readonly noise = new SimplexNoise(1978);
 
-    async getChunk(coord: BlockCoord) {
+    async getWorldMetadata(worldId: string): Promise<WorldMetadata> {
+        return {
+            id: worldId,
+            depth: DEPTH,
+            height: HEIGHT,
+        };
+    }
+
+    async getChunk(_worldId: string, coord: BlockCoord) {
         return this.getOrCreateChunk(coord);
     }
 

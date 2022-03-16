@@ -26,7 +26,7 @@ const view = new ViewScene({
         const canvas = view.getCanvas();
 
         const blockMaterialManager = new BlockMaterialManager({ container });
-        const packInfo = await blockMaterialManager.getPackInfo(knownMaterialPacks.block.standard);
+        const packInfo = await blockMaterialManager.getPackInfo(knownMaterialPacks.block.sample);
 
         const scene = new BABYLON.Scene(engine);
 
@@ -40,12 +40,14 @@ const view = new ViewScene({
 
         const faceUV = new Array<BABYLON.Vector4>(6);
 
-        faceUV[0] = packInfo.uvs.top.front;
-        faceUV[1] = packInfo.uvs.top.back;
-        faceUV[2] = packInfo.uvs.top.right;
-        faceUV[3] = packInfo.uvs.top.left;
-        faceUV[4] = packInfo.uvs.top.top;
-        faceUV[5] = packInfo.uvs.top.bottom;
+        const uvs = await packInfo.uvs(knownMaterials.block.top);
+
+        faceUV[0] = uvs.front;
+        faceUV[1] = uvs.back;
+        faceUV[2] = uvs.right;
+        faceUV[3] = uvs.left;
+        faceUV[4] = uvs.top;
+        faceUV[5] = uvs.bottom;
 
         const options = {
             faceUV: faceUV,

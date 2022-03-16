@@ -24,7 +24,7 @@ export class MaterialDataManager extends LoggerObject {
             );
         }
 
-        if (id === knownMaterialPacks.block.sample) {
+        if (id === knownMaterialPacks.block.standard) {
             return blockMaterialPackFunctions.create(
                 knownMaterialPacks.block.standard,
                 [

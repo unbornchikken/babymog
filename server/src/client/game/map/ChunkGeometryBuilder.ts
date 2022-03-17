@@ -1,19 +1,27 @@
 import assert from 'assert';
 import { BlockCoord, blockCoordFunctions } from 'common/game/map/BlockCoord';
 import type { Chunk } from 'common/game/map/Chunk';
-import { WorldManager } from 'common/game/map/WorldManager';
+import type { WorldManager, SorroundingPiles } from 'common/game/map/WorldManager';
 import { Pile, pileFunctions } from 'common/game/map/Pile';
 import { LoggerObject } from 'common/system/log/LoggerObject';
 import { Vector3Builder } from '../../system/babylon/Vector3Builder';
 import { Vector2Builder } from '../../system/babylon/Vector2Builder';
 import type { Container } from 'common/system/ioc/Container';
-import type { WorldMetadata } from 'common/game/map/WorldMetadata';
+import type { PileLayer } from 'common/game/map/PileLayer';
+import type { BlockMaterialManager, BlockMaterialPackInfo, BlockMaterialUVs } from '../materials/BlockMaterialManager';
+
+const TOP_POSITIONS = [new BABYLON.Vector3(0, 1, 0), new BABYLON.Vector3(0, 1, 1), new BABYLON.Vector3(1, 1, 1), new BABYLON.Vector3(1, 1, 0)];
+const BOTTOM_POSITIONS = [new BABYLON.Vector3(0, 0, 0), new BABYLON.Vector3(1, 0, 0), new BABYLON.Vector3(1, 0, 1), new BABYLON.Vector3(0, 0, 1)];
+const BACK_POSITIONS = [new BABYLON.Vector3(0, 0, 0), new BABYLON.Vector3(0, 1, 0), new BABYLON.Vector3(1, 1, 0), new BABYLON.Vector3(1, 0, 0)];
+const RIGHT_POSITIONS = [new BABYLON.Vector3(1, 0, 0), new BABYLON.Vector3(1, 1, 0), new BABYLON.Vector3(1, 1, 1), new BABYLON.Vector3(1, 0, 1)];
+const FRONT_POSITIONS = [new BABYLON.Vector3(1, 0, 1), new BABYLON.Vector3(1, 1, 1), new BABYLON.Vector3(0, 1, 1), new BABYLON.Vector3(0, 0, 1)];
+const LEFT_POSITIONS = [new BABYLON.Vector3(0, 0, 1), new BABYLON.Vector3(0, 1, 1), new BABYLON.Vector3(0, 1, 0), new BABYLON.Vector3(0, 0, 0)];
 
 export type ChunkSubGeometry = {
     vertices: number[],
     triangleIndices: number[],
     uvs: number[],
-    textureUrl: string,
+    textureImageUrl: string,
 };
 
 export type ChunkGeometry = {
@@ -22,27 +30,27 @@ export type ChunkGeometry = {
 
 export type ChunkGeometryBuilderOptions = {
     container: Container,
-    worldId: string,
+    worldManager: WorldManager;
+    materialManager: BlockMaterialManager;
 };
 
 export class ChunkGeometryBuilder extends LoggerObject {
     constructor(options: ChunkGeometryBuilderOptions) {
         super(options.container);
 
-        this.worldId = options.worldId;
+        this.worldManager = options.worldManager;
+        this.materialManager = options.materialManager;
     }
 
-    readonly worldId: string;
+    private worldManager: WorldManager;
 
-    private worldManager?: WorldManager;
-
-    private worldMatadata?: WorldMetadata;
+    private materialManager: BlockMaterialManager;
 
     async build(coord: BlockCoord) {
-        const worldManager = this.getWorldManager();
-        const chunk = await worldManager.getChunk(coord);
+        const world = await this.worldManager.getMetadta();
+        const chunk = await this.worldManager.getChunk(coord);
         const subGeometries = new Map<string, ChunkSubGeometryBuilder>();
-        const getSubGeometry = (packId: string) => {
+        const getSubGeometryBuilder = (packId: string) => {
             let sub = subGeometries.get(packId);
             if (!sub) {
                 sub = new ChunkSubGeometryBuilder();
@@ -52,12 +60,73 @@ export class ChunkGeometryBuilder extends LoggerObject {
         };
 
         for (const pile of chunk.piles) {
-            const renderToY = await this.getRenderToY(chunk, pile);
+            const pileSorroundings = await this.worldManager.getSorroundingPiles(pile.coord, chunk);
+            const renderToY = ChunkGeometryBuilder.getRenderToY(chunk, pile, pileSorroundings, world.depth);
 
             for (const layer of pile.layers) {
                 const isLast = layer.y === renderToY;
-                const pileLocalCoord = this.getPileLocalCoord(chunk, pile);
+                const pileLocalCoord = ChunkGeometryBuilder.getPileLocalCoord(chunk, pile);
                 const blockLocalPosition = new BABYLON.Vector3(pileLocalCoord.x, layer.y, pileLocalCoord.z);
+                const sorroundings = ChunkGeometryBuilder.getSorroundings(chunk, pile, pileSorroundings, layer, world.depth);
+
+                const subGeometryBuilder = getSubGeometryBuilder(layer.block.materialReference.packId);
+                if (!subGeometryBuilder.materialInfo) {
+                    subGeometryBuilder.materialInfo = await this.materialManager.getPackInfo(layer.block.materialReference.packId);
+                }
+
+                if (!sorroundings.top) {
+                    ChunkGeometryBuilder.addMeshData(
+                        subGeometryBuilder,
+                        (await subGeometryBuilder.materialInfo.uvs(layer.block.materialReference.materialId)).top,
+                        blockLocalPosition,
+                        TOP_POSITIONS
+                    );
+                }
+
+                if (!sorroundings.bottom && !isLast) {
+                    ChunkGeometryBuilder.addMeshData(
+                        subGeometryBuilder,
+                        (await subGeometryBuilder.materialInfo.uvs(layer.block.materialReference.materialId)).bottom,
+                        blockLocalPosition,
+                        BOTTOM_POSITIONS
+                    );
+                }
+
+                if (!sorroundings.back) {
+                    ChunkGeometryBuilder.addMeshData(
+                        subGeometryBuilder,
+                        (await subGeometryBuilder.materialInfo.uvs(layer.block.materialReference.materialId)).back,
+                        blockLocalPosition,
+                        BACK_POSITIONS
+                    );
+                }
+
+                if (!sorroundings.right) {
+                    ChunkGeometryBuilder.addMeshData(
+                        subGeometryBuilder,
+                        (await subGeometryBuilder.materialInfo.uvs(layer.block.materialReference.materialId)).right,
+                        blockLocalPosition,
+                        RIGHT_POSITIONS
+                    );
+                }
+
+                if (!sorroundings.front) {
+                    ChunkGeometryBuilder.addMeshData(
+                        subGeometryBuilder,
+                        (await subGeometryBuilder.materialInfo.uvs(layer.block.materialReference.materialId)).front,
+                        blockLocalPosition,
+                        FRONT_POSITIONS
+                    );
+                }
+
+                if (!sorroundings.left) {
+                    ChunkGeometryBuilder.addMeshData(
+                        subGeometryBuilder,
+                        (await subGeometryBuilder.materialInfo.uvs(layer.block.materialReference.materialId)).left,
+                        blockLocalPosition,
+                        LEFT_POSITIONS
+                    );
+                }
 
                 if (isLast) {
                     break;
@@ -65,39 +134,74 @@ export class ChunkGeometryBuilder extends LoggerObject {
             }
         }
 
-        return this.buildGeometry(subGeometries);
+        return ChunkGeometryBuilder.buildGeometry(subGeometries);
     }
 
-    private getPileLocalCoord(chunk: Chunk, pile: Pile): BlockCoord {
+    private static addMeshData(builder: ChunkSubGeometryBuilder, uvs: BABYLON.Vector4, blockLocalPosition: BABYLON.Vector3, positions: BABYLON.Vector3[]) {
+        const beginIndex = builder.vertices.numbers.length;
+
+        builder.vertices.add(blockLocalPosition.add(positions[0]));
+        builder.vertices.add(blockLocalPosition.add(positions[1]));
+        builder.vertices.add(blockLocalPosition.add(positions[2]));
+        builder.vertices.add(blockLocalPosition.add(positions[3]));
+
+        ChunkGeometryBuilder.addToUVs(builder.uvs, uvs);
+
+        builder.triangleIndices.push(beginIndex);
+        builder.triangleIndices.push(beginIndex + 1);
+        builder.triangleIndices.push(beginIndex + 2);
+
+        builder.triangleIndices.push(beginIndex);
+        builder.triangleIndices.push(beginIndex + 2);
+        builder.triangleIndices.push(beginIndex + 3);
+    }
+
+    static addToUVs(uvsBuilder: Vector2Builder, uvs: BABYLON.Vector4) {
+        uvsBuilder.add(uvs.x, uvs.y);
+        uvsBuilder.add(uvs.w, uvs.y);
+        uvsBuilder.add(uvs.w, uvs.z);
+        uvsBuilder.add(uvs.x, uvs.z);
+    }
+
+    private static getSorroundings(chunk: Chunk, pile: Pile, sorroundings: SorroundingPiles, pileLayer: PileLayer, worldDepth: number) {
+        const top = pileFunctions.tryGetLayer(pile, pileLayer.y + 1, worldDepth);
+        const bottom = pileFunctions.tryGetLayer(pile, pileLayer.y + 1, worldDepth);
+        return {
+            top,
+            bottom,
+            left: pileFunctions.tryGetLayer(sorroundings.leftPile, pileLayer.y, worldDepth),
+            right: pileFunctions.tryGetLayer(sorroundings.rightPile, pileLayer.y, worldDepth),
+            front: pileFunctions.tryGetLayer(sorroundings.frontPile, pileLayer.y, worldDepth),
+            back: pileFunctions.tryGetLayer(sorroundings.backPile, pileLayer.y, worldDepth),
+        };
+    }
+
+    private static getPileLocalCoord(chunk: Chunk, pile: Pile): BlockCoord {
         return blockCoordFunctions.create(pile.coord.x - chunk.coord.x, pile.coord.z - chunk.coord.z);
     }
 
-    private async getRenderToY(chunk: Chunk, pile: Pile) {
-        const worldManager = this.getWorldManager();
-        const world = await this.getWorldMetadata();
-
-        let min = pileFunctions.getTopYCoord(pile, world.depth);
-        const sorroundings = await worldManager.getSorroundingPiles(pile.coord, chunk);
+    private static getRenderToY(chunk: Chunk, pile: Pile, sorroundings: SorroundingPiles, worldDepth: number) {
+        let min = pileFunctions.getTopYCoord(pile, worldDepth);
         if (sorroundings.leftPile){
-            const letTopY = pileFunctions.getTopYCoord(sorroundings.leftPile, world.depth);
+            const letTopY = pileFunctions.getTopYCoord(sorroundings.leftPile, worldDepth);
             if (letTopY < min) {
                 min = letTopY;
             }
         }
         if (sorroundings.rightPile){
-            const rightTopY = pileFunctions.getTopYCoord(sorroundings.rightPile, world.depth);
+            const rightTopY = pileFunctions.getTopYCoord(sorroundings.rightPile, worldDepth);
             if (rightTopY < min) {
                 min = rightTopY;
             }
         }
         if (sorroundings.frontPile){
-            const frontTopY = pileFunctions.getTopYCoord(sorroundings.frontPile, world.depth);
+            const frontTopY = pileFunctions.getTopYCoord(sorroundings.frontPile, worldDepth);
             if (frontTopY < min) {
                 min = frontTopY;
             }
         }
         if (sorroundings.backPile){
-            const backTopY = pileFunctions.getTopYCoord(sorroundings.backPile, world.depth);
+            const backTopY = pileFunctions.getTopYCoord(sorroundings.backPile, worldDepth);
             if (backTopY < min) {
                 min = backTopY;
             }
@@ -105,7 +209,7 @@ export class ChunkGeometryBuilder extends LoggerObject {
         return min;
     }
 
-    private buildGeometry(subGeometries: Map<string, ChunkSubGeometryBuilder>) {
+    private static buildGeometry(subGeometries: Map<string, ChunkSubGeometryBuilder>) {
         assert(subGeometries.size);
         const geometry: ChunkGeometry = {};
         for (const [packId, sub] of subGeometries) {
@@ -113,32 +217,16 @@ export class ChunkGeometryBuilder extends LoggerObject {
         }
         return geometry;
     }
-
-    private async getWorldMetadata() {
-        if (this.worldMatadata) {
-            return this.worldMatadata;
-        }
-        this.worldMatadata = await this.getWorldManager().getMetadta();
-        return this.worldMatadata;
-    }
-
-    private getWorldManager() {
-        if (this.worldManager) {
-            return this.worldManager;
-        }
-        this.worldManager = new WorldManager({ container: this.container, worldId: this.worldId });
-        return this.worldManager;
-    }
 }
 
 class ChunkSubGeometryBuilder {
     readonly vertices = new Vector3Builder();
     readonly triangleIndices: number[] = [];
     readonly uvs = new Vector2Builder();
-    readonly textureUrl?: string;
+    materialInfo?: BlockMaterialPackInfo;
 
     build(): ChunkSubGeometry {
-        assert(this.textureUrl);
+        assert(this.materialInfo);
         assert(this.triangleIndices.length);
         assert(this.uvs.numbers.length);
         assert(this.vertices.numbers.length);
@@ -146,7 +234,7 @@ class ChunkSubGeometryBuilder {
             vertices: this.vertices.numbers,
             triangleIndices: this.triangleIndices,
             uvs: this.uvs.numbers,
-            textureUrl: this.textureUrl
+            textureImageUrl: this.materialInfo.atlasImageUrl,
         };
     }
 }

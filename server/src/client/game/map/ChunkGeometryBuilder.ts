@@ -138,7 +138,7 @@ export class ChunkGeometryBuilder extends LoggerObject {
     }
 
     private static addMeshData(builder: ChunkSubGeometryBuilder, uvs: BABYLON.Vector4, blockLocalPosition: BABYLON.Vector3, positions: BABYLON.Vector3[]) {
-        const beginIndex = builder.vertices.numbers.length;
+        const beginIndex = builder.vertices.numbers.length / 3;
 
         builder.vertices.add(blockLocalPosition.add(positions[0]));
         builder.vertices.add(blockLocalPosition.add(positions[1]));
@@ -165,7 +165,7 @@ export class ChunkGeometryBuilder extends LoggerObject {
 
     private static getSorroundings(chunk: Chunk, pile: Pile, sorroundings: SorroundingPiles, pileLayer: PileLayer, worldDepth: number) {
         const top = pileFunctions.tryGetLayer(pile, pileLayer.y + 1, worldDepth);
-        const bottom = pileFunctions.tryGetLayer(pile, pileLayer.y + 1, worldDepth);
+        const bottom = pileFunctions.tryGetLayer(pile, pileLayer.y - 1, worldDepth);
         return {
             top,
             bottom,

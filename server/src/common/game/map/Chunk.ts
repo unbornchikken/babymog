@@ -67,7 +67,7 @@ function pileCoordToChunkCoord(arg: Pile | BlockCoord): BlockCoord {
         coord = arg;
     }
 
-    return blockCoordFunctions.create(conv(coord.x), conv(coord.y));
+    return blockCoordFunctions.create(conv(coord.x), conv(coord.z));
 
     function conv(value: number) {
         if (value == 0) {

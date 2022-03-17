@@ -1,11 +1,11 @@
 import { Container } from 'common/system/ioc/Container';
 import pino, { Logger } from 'pino';
-import { TextureAtlas } from './system/resources/TextureAtlas';
 import { ViewScene } from './system/babylon/ViewScene';
 import { BlockMaterialManager } from './game/materials/BlockMaterialManager';
-import { knownMaterialPacks } from 'common/game/materials/knownMaterialPacks';
-import { knownAtlasCollections } from 'common/game/materials/knownAtlasCollections';
-import { knownMaterials } from 'common/game/materials/knownMaterials';
+import { ChunkGeometryBuilder } from './game/map/ChunkGeometryBuilder';
+import { WorldManager } from 'common/game/map/WorldManager';
+import { blockCoordFunctions } from 'common/game/map/BlockCoord';
+import { HackWorldDataInterface } from './game/map/HackWorldDataInterface';
 
 const container = new Container();
 
@@ -19,14 +19,13 @@ container.register(
     })
 );
 
+container.register('ChunkDataInterface', c => new HackWorldDataInterface());
+
 const view = new ViewScene({
     container,
     async sceneFactory(view) {
         const engine = view.getEngine();
         const canvas = view.getCanvas();
-
-        const blockMaterialManager = new BlockMaterialManager({ container });
-        const packInfo = await blockMaterialManager.getPackInfo(knownMaterialPacks.block.sample);
 
         const scene = new BABYLON.Scene(engine);
 
@@ -34,6 +33,30 @@ const view = new ViewScene({
         camera.attachControl(canvas, true);
         const light = new BABYLON.HemisphericLight('light', new BABYLON.Vector3(1, 1, 0), scene);
 
+        const builder = new ChunkGeometryBuilder({
+            container,
+            materialManager: new BlockMaterialManager({ container }),
+            worldManager: new WorldManager({ container: container, worldId: 'pupu' })
+        });
+
+        const geometry = await builder.build(blockCoordFunctions.create(0, 0));
+
+        const chunkMat = new BABYLON.StandardMaterial('chunkMat', scene);
+        chunkMat.backFaceCulling = true;
+        const chunk = new BABYLON.Mesh('chunk', scene);
+
+        const normals: number[] = [];
+        BABYLON.VertexData.ComputeNormals(geometry.standard.vertices, geometry.standard.triangleIndices, normals);
+        const vertexData = new BABYLON.VertexData();
+        vertexData.positions = geometry.standard.vertices;
+        vertexData.indices = geometry.standard.triangleIndices;
+        vertexData.normals = normals;
+
+        vertexData.applyToMesh(chunk);
+
+        chunk.material = chunkMat;
+
+        /*
         const mat = new BABYLON.StandardMaterial('mat', scene);
         const texture = new BABYLON.Texture(packInfo.atlasImageUrl, scene);
         mat.diffuseTexture = texture;
@@ -64,6 +87,7 @@ const view = new ViewScene({
                 boxInstance.position = new BABYLON.Vector3(x, 0, z);
             }
         }
+        */
 
         return scene;
     }

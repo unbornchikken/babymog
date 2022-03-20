@@ -147,13 +147,18 @@ export class ChunkGeometryBuilder extends LoggerObject {
 
         ChunkGeometryBuilder.addToUVs(builder.uvs, uvs);
 
-        builder.triangleIndices.push(beginIndex);
-        builder.triangleIndices.push(beginIndex + 1);
-        builder.triangleIndices.push(beginIndex + 2);
+        const index1 = beginIndex;
+        const index2 = beginIndex + 1;
+        const index3 = beginIndex + 2;
+        const index4 = beginIndex + 3;
 
-        builder.triangleIndices.push(beginIndex);
-        builder.triangleIndices.push(beginIndex + 2);
-        builder.triangleIndices.push(beginIndex + 3);
+        builder.triangleIndices.push(index3);
+        builder.triangleIndices.push(index2);
+        builder.triangleIndices.push(index1);
+
+        builder.triangleIndices.push(index4);
+        builder.triangleIndices.push(index3);
+        builder.triangleIndices.push(index1);
     }
 
     static addToUVs(uvsBuilder: Vector2Builder, uvs: BABYLON.Vector4) {

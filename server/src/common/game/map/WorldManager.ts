@@ -31,9 +31,7 @@ export class WorldManager extends LoggerObject {
 
     private metadata?: WorldMetadata;
 
-    getWorldDataInterface() {
-        return this.container.get<WorldDataInterface>('ChunkDataInterface');
-    }
+    private worldDataInterface?: WorldDataInterface;
 
     async getMetadta() {
         if (this.metadata) {
@@ -66,5 +64,13 @@ export class WorldManager extends LoggerObject {
         };
 
         return result;
+    }
+
+    private getWorldDataInterface() {
+        if (this.worldDataInterface) {
+            return this.worldDataInterface;
+        }
+        this.worldDataInterface = this.container.get<WorldDataInterface>('ChunkDataInterface');
+        return this.worldDataInterface;
     }
 }

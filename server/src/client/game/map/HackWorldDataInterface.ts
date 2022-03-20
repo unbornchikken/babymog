@@ -10,11 +10,12 @@ import { knownMaterials } from 'common/game/materials/knownMaterials';
 import { math } from 'common/system/math';
 import SimplexNoise from 'simplex-noise';
 import type { WorldMetadata } from 'common/game/map/WorldMetadata';
+import { LoggerObject } from 'common/system/log/LoggerObject';
 
 const DEPTH = 100;
 const HEIGHT = 100;
 
-export class HackWorldDataInterface implements WorldDataInterface {
+export class HackWorldDataInterface extends LoggerObject implements WorldDataInterface {
     private readonly chunks: Map<string, Chunk> = new Map();
 
     private readonly noise = new SimplexNoise(1978);
@@ -38,8 +39,10 @@ export class HackWorldDataInterface implements WorldDataInterface {
             return chunk;
         }
 
+        const startOn = Date.now();
         chunk = chunkFunctions.create(coord, this.generatePiles(coord));
         this.chunks.set(key, chunk);
+        this.logger.debug('Chunk %s has been generated in %d ms.', blockCoordFunctions.toString(coord), Date.now() - startOn);
         return chunk;
     }
 
@@ -47,11 +50,15 @@ export class HackWorldDataInterface implements WorldDataInterface {
         const piles: Pile[] = [];
         for (let x = 0; x < CHUNK_SIZE; x++) {
             for (let z = 0; z < CHUNK_SIZE; z++) {
-                const pileCoord = blockCoordFunctions.create(coord.x + x, coord.z + z);
-                piles.push(pileFunctions.create(pileCoord, this.generatePileLayers(pileCoord)));
+                this.generatePile(coord, x, z, piles);
             }
         }
         return piles;
+    }
+
+    private generatePile(coord: BlockCoord, x: number, z: number, piles: Pile[]) {
+        const pileCoord = blockCoordFunctions.create(coord.x + x, coord.z + z);
+        piles.push(pileFunctions.create(pileCoord, this.generatePileLayers(pileCoord)));
     }
 
     private generatePileLayers(pileCoord: BlockCoord) {

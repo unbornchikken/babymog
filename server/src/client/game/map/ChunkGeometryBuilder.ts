@@ -9,6 +9,7 @@ import { Vector2Builder } from '../../system/babylon/Vector2Builder';
 import type { Container } from 'common/system/ioc/Container';
 import type { PileLayer } from 'common/game/map/PileLayer';
 import type { BlockMaterialManager, BlockMaterialPackInfo, BlockMaterialUVs } from '../materials/BlockMaterialManager';
+import * as BABYLON from 'babylonjs';
 
 const TOP_POSITIONS = [new BABYLON.Vector3(0, 1, 0), new BABYLON.Vector3(0, 1, 1), new BABYLON.Vector3(1, 1, 1), new BABYLON.Vector3(1, 1, 0)];
 const BOTTOM_POSITIONS = [new BABYLON.Vector3(0, 0, 0), new BABYLON.Vector3(1, 0, 0), new BABYLON.Vector3(1, 0, 1), new BABYLON.Vector3(0, 0, 1)];
@@ -77,10 +78,12 @@ export class ChunkGeometryBuilder extends LoggerObject {
                     subGeometryBuilder.materialInfo = await this.materialManager.getPackInfo(layer.block.materialReference.packId);
                 }
 
+                const uvs = (await subGeometryBuilder.materialInfo.uvs(layer.block.materialReference.materialId));
+
                 if (!sorroundings.top) {
                     ChunkGeometryBuilder.addMeshData(
                         subGeometryBuilder,
-                        (await subGeometryBuilder.materialInfo.uvs(layer.block.materialReference.materialId)).top,
+                        uvs.top,
                         blockLocalPosition,
                         TOP_POSITIONS
                     );
@@ -89,7 +92,7 @@ export class ChunkGeometryBuilder extends LoggerObject {
                 if (!sorroundings.bottom && !isLast) {
                     ChunkGeometryBuilder.addMeshData(
                         subGeometryBuilder,
-                        (await subGeometryBuilder.materialInfo.uvs(layer.block.materialReference.materialId)).bottom,
+                        uvs.bottom,
                         blockLocalPosition,
                         BOTTOM_POSITIONS
                     );
@@ -98,7 +101,7 @@ export class ChunkGeometryBuilder extends LoggerObject {
                 if (!sorroundings.back) {
                     ChunkGeometryBuilder.addMeshData(
                         subGeometryBuilder,
-                        (await subGeometryBuilder.materialInfo.uvs(layer.block.materialReference.materialId)).back,
+                        uvs.back,
                         blockLocalPosition,
                         BACK_POSITIONS
                     );
@@ -107,7 +110,7 @@ export class ChunkGeometryBuilder extends LoggerObject {
                 if (!sorroundings.right) {
                     ChunkGeometryBuilder.addMeshData(
                         subGeometryBuilder,
-                        (await subGeometryBuilder.materialInfo.uvs(layer.block.materialReference.materialId)).right,
+                        uvs.right,
                         blockLocalPosition,
                         RIGHT_POSITIONS
                     );
@@ -116,7 +119,7 @@ export class ChunkGeometryBuilder extends LoggerObject {
                 if (!sorroundings.front) {
                     ChunkGeometryBuilder.addMeshData(
                         subGeometryBuilder,
-                        (await subGeometryBuilder.materialInfo.uvs(layer.block.materialReference.materialId)).front,
+                        uvs.front,
                         blockLocalPosition,
                         FRONT_POSITIONS
                     );
@@ -125,7 +128,7 @@ export class ChunkGeometryBuilder extends LoggerObject {
                 if (!sorroundings.left) {
                     ChunkGeometryBuilder.addMeshData(
                         subGeometryBuilder,
-                        (await subGeometryBuilder.materialInfo.uvs(layer.block.materialReference.materialId)).left,
+                        uvs.left,
                         blockLocalPosition,
                         LEFT_POSITIONS
                     );
@@ -143,10 +146,10 @@ export class ChunkGeometryBuilder extends LoggerObject {
     private static addMeshData(builder: ChunkSubGeometryBuilder, uvs: BABYLON.Vector4, blockLocalPosition: BABYLON.Vector3, positions: BABYLON.Vector3[]) {
         const beginIndex = builder.vertices.numbers.length / 3;
 
-        builder.vertices.add(blockLocalPosition.add(positions[0]));
-        builder.vertices.add(blockLocalPosition.add(positions[1]));
-        builder.vertices.add(blockLocalPosition.add(positions[2]));
-        builder.vertices.add(blockLocalPosition.add(positions[3]));
+        builder.vertices.addVec(blockLocalPosition.add(positions[0]));
+        builder.vertices.addVec(blockLocalPosition.add(positions[1]));
+        builder.vertices.addVec(blockLocalPosition.add(positions[2]));
+        builder.vertices.addVec(blockLocalPosition.add(positions[3]));
 
         ChunkGeometryBuilder.addToUVs(builder.uvs, uvs);
 

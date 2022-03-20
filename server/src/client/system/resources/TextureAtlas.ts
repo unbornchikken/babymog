@@ -4,6 +4,7 @@ import assert from 'assert';
 import { InternalError } from 'common/system/errors/InternalError';
 import type { AtlasResult } from 'common/game/materials/AtlasResult';
 import urljoin from 'url-join';
+import * as BABYLON from 'babylonjs';
 
 export type TextureAtlasOptions = {
     container: Container,

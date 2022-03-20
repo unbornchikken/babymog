@@ -1,6 +1,7 @@
-import type { BlockCoord } from 'common/game/map/BlockCoord';
+import { BlockCoord, blockCoordFunctions } from 'common/game/map/BlockCoord';
 import { LoggerObject } from 'common/system/log/LoggerObject';
 import type { ChunkGeometry } from './ChunkGeometryBuilder';
+import * as BABYLON from 'babylonjs';
 
 export class ChunkMeshBuilder extends LoggerObject {
     build(chunkGeometry: ChunkGeometry, scene: BABYLON.Scene) {
@@ -36,6 +37,7 @@ export class ChunkMeshBuilder extends LoggerObject {
         for (let i = 1; i <= remainMatCount; i++) {
             chunk.subMeshes[i].materialIndex = i;
         }
+        chunk.position = blockCoordFunctions.getVec3(chunkGeometry.chunkCoord);
         return chunk;
     }
 

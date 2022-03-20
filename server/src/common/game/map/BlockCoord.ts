@@ -10,7 +10,8 @@ export type BlockCoord = {
 export const blockCoordFunctions = {
     create,
     zero,
-    getVec,
+    getVec2,
+    getVec3,
     getXZ,
     getLeft,
     getRight,
@@ -58,8 +59,12 @@ function zero(): BlockCoord {
     };
 }
 
-function getVec(coord: BlockCoord) {
+function getVec3(coord: BlockCoord) {
     return new BABYLON.Vector3(coord.x, coord.y, coord.z);
+}
+
+function getVec2(coord: BlockCoord) {
+    return new BABYLON.Vector2(coord.x, coord.z);
 }
 
 function getXZ(coord: BlockCoord): BlockCoord {

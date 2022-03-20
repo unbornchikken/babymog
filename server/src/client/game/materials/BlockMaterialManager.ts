@@ -3,6 +3,7 @@ import { knownAtlasCollections } from 'common/game/materials/knownAtlasCollectio
 import type { Container } from 'common/system/ioc/Container';
 import { LoggerObject } from 'common/system/log/LoggerObject';
 import { TextureAtlas } from '../../system/resources/TextureAtlas';
+import type * as BABYLON from 'babylonjs';
 
 type AtlasEntry = {
     id: string,

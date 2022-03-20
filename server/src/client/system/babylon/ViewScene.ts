@@ -1,5 +1,6 @@
 import type { Container } from 'common/system/ioc/Container';
 import { LoggerObject } from 'common/system/log/LoggerObject';
+import * as BABYLON from 'babylonjs';
 
 export type SceneFactory = ((view: ViewScene) => BABYLON.Scene) | ((view: ViewScene) => Promise<BABYLON.Scene>);
 

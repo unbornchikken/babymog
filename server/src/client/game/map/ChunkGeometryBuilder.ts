@@ -25,7 +25,10 @@ export type ChunkSubGeometry = {
 };
 
 export type ChunkGeometry = {
-    [packId: string]: ChunkSubGeometry
+    chunkCoord: BlockCoord,
+    subGeometries: {
+        [packId: string]: ChunkSubGeometry
+    }
 };
 
 export type ChunkGeometryBuilderOptions = {
@@ -134,7 +137,7 @@ export class ChunkGeometryBuilder extends LoggerObject {
             }
         }
 
-        return ChunkGeometryBuilder.buildGeometry(subGeometries);
+        return ChunkGeometryBuilder.buildGeometry(chunk.coord, subGeometries);
     }
 
     private static addMeshData(builder: ChunkSubGeometryBuilder, uvs: BABYLON.Vector4, blockLocalPosition: BABYLON.Vector3, positions: BABYLON.Vector3[]) {
@@ -214,13 +217,16 @@ export class ChunkGeometryBuilder extends LoggerObject {
         return min;
     }
 
-    private static buildGeometry(subGeometries: Map<string, ChunkSubGeometryBuilder>) {
+    private static buildGeometry(chunkCoord: BlockCoord, subGeometries: Map<string, ChunkSubGeometryBuilder>): ChunkGeometry {
         assert(subGeometries.size);
-        const geometry: ChunkGeometry = {};
+        const chunkSubGeometries: ChunkGeometry['subGeometries'] = {};
         for (const [packId, sub] of subGeometries) {
-            geometry[packId] = sub.build();
+            chunkSubGeometries[packId] = sub.build();
         }
-        return geometry;
+        return {
+            chunkCoord,
+            subGeometries: chunkSubGeometries,
+        };
     }
 }
 

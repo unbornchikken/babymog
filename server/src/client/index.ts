@@ -6,6 +6,7 @@ import { ChunkGeometryBuilder } from './game/map/ChunkGeometryBuilder';
 import { WorldManager } from 'common/game/map/WorldManager';
 import { blockCoordFunctions } from 'common/game/map/BlockCoord';
 import { HackWorldDataInterface } from './game/map/HackWorldDataInterface';
+import { ChunkMeshBuilder } from './game/map/ChunkMeshBuilder';
 
 const container = new Container();
 
@@ -33,39 +34,16 @@ const view = new ViewScene({
         camera.attachControl(canvas, true);
         const light = new BABYLON.HemisphericLight('light', new BABYLON.Vector3(1, 1, 0), scene);
 
-        const builder = new ChunkGeometryBuilder({
+        const geometryBuilder = new ChunkGeometryBuilder({
             container,
             materialManager: new BlockMaterialManager({ container }),
             worldManager: new WorldManager({ container: container, worldId: 'pupu' })
         });
 
-        const geometry = await builder.build(blockCoordFunctions.create(0, 0));
-        const multiChunkMat = new BABYLON.MultiMaterial('multiChunkMat', scene);
-        const chunkMeshes: BABYLON.Mesh[] = [];
+        const meshBuilder = new ChunkMeshBuilder(container);
 
-        for (const [materialPackId, subGeometry] of Object.entries(geometry)) {
-            const chunkMat = new BABYLON.StandardMaterial('chunkMat_' + materialPackId, scene);
-            chunkMat.diffuseTexture = new BABYLON.Texture(subGeometry.textureImageUrl, scene);
-
-            const subChunk = new BABYLON.Mesh('chunk_' + materialPackId, scene);
-
-            const normals: number[] = [];
-            BABYLON.VertexData.ComputeNormals(subGeometry.vertices, subGeometry.triangleIndices, normals);
-            const vertexData = new BABYLON.VertexData();
-            vertexData.positions = subGeometry.vertices;
-            vertexData.indices = subGeometry.triangleIndices;
-            vertexData.normals = normals;
-            vertexData.uvs = subGeometry.uvs;
-
-            vertexData.applyToMesh(subChunk);
-
-            multiChunkMat.subMaterials.push(chunkMat);
-            chunkMeshes.push(subChunk);
-        }
-
-        const chunk = BABYLON.Mesh.MergeMeshes(chunkMeshes, true, true, undefined, true)!;
-        chunk.material = multiChunkMat;
-        chunk.subMeshes[1].materialIndex = 1;
+        const geometry = await geometryBuilder.build(blockCoordFunctions.create(0, 0));
+        meshBuilder.build(geometry, scene);
 
         return scene;
     }

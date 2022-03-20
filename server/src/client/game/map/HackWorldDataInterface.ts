@@ -57,14 +57,8 @@ export class HackWorldDataInterface implements WorldDataInterface {
     private generatePileLayers(pileCoord: BlockCoord) {
         const layers: PileLayer[] = [];
 
-        /*
-        layers.push(this.createLayer(0, knownMaterials.block.top));
-        layers.push(this.createLayer(-1, knownMaterials.block.crust));
-        layers.push(this.createLayer(-2, knownMaterials.block.bottom));
-        */
-
-        const simplex1 = this.noise.noise2D(pileCoord.y * 0.8, pileCoord.z * 0.8) * 10;
-        const simplex2 = this.noise.noise2D(pileCoord.y * 3, pileCoord.z * 3) * 10 * (this.noise.noise2D(pileCoord.x * 0.3, pileCoord.z * 0.3) + 0.5);
+        const simplex1 = this.noise.noise2D(pileCoord.x * 0.05, pileCoord.z * 0.05) * 8;
+        const simplex2 = this.noise.noise2D(pileCoord.x * 0.1, pileCoord.z * 0.1) * 8 * (this.noise.noise2D(pileCoord.x * 0.01, pileCoord.z * 0.01) + 0.1);
 
         const baseLandHeight = simplex1 + simplex2;
         const baseLandY = Math.round(math.clamp(baseLandHeight, -DEPTH, HEIGHT));
@@ -92,7 +86,7 @@ export class HackWorldDataInterface implements WorldDataInterface {
         return pileLayerFunctions.create(
             y,
             blockFunctions.create(
-                blockMaterialReferenceFunctions.create(knownMaterialPacks.block.standard, materialId)
+                blockMaterialReferenceFunctions.create(y > 0 ? knownMaterialPacks.block.sample : knownMaterialPacks.block.standard, materialId)
             )
         );
     }

@@ -163,9 +163,9 @@ export class ChunkGeometryBuilder extends LoggerObject {
 
     static addToUVs(uvsBuilder: Vector2Builder, uvs: BABYLON.Vector4) {
         uvsBuilder.add(uvs.x, uvs.y);
-        uvsBuilder.add(uvs.w, uvs.y);
-        uvsBuilder.add(uvs.w, uvs.z);
-        uvsBuilder.add(uvs.x, uvs.z);
+        uvsBuilder.add(uvs.x, uvs.w);
+        uvsBuilder.add(uvs.z, uvs.w);
+        uvsBuilder.add(uvs.z, uvs.y);
     }
 
     private static getSorroundings(chunk: Chunk, pile: Pile, sorroundings: SorroundingPiles, pileLayer: PileLayer, worldDepth: number) {

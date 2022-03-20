@@ -40,54 +40,32 @@ const view = new ViewScene({
         });
 
         const geometry = await builder.build(blockCoordFunctions.create(0, 0));
+        const multiChunkMat = new BABYLON.MultiMaterial('multiChunkMat', scene);
+        const chunkMeshes: BABYLON.Mesh[] = [];
 
-        const chunkMat = new BABYLON.StandardMaterial('chunkMat', scene);
-        chunkMat.backFaceCulling = true;
-        const chunk = new BABYLON.Mesh('chunk', scene);
+        for (const [materialPackId, subGeometry] of Object.entries(geometry)) {
+            const chunkMat = new BABYLON.StandardMaterial('chunkMat_' + materialPackId, scene);
+            chunkMat.diffuseTexture = new BABYLON.Texture(subGeometry.textureImageUrl, scene);
 
-        const normals: number[] = [];
-        BABYLON.VertexData.ComputeNormals(geometry.standard.vertices, geometry.standard.triangleIndices, normals);
-        const vertexData = new BABYLON.VertexData();
-        vertexData.positions = geometry.standard.vertices;
-        vertexData.indices = geometry.standard.triangleIndices;
-        vertexData.normals = normals;
+            const subChunk = new BABYLON.Mesh('chunk_' + materialPackId, scene);
 
-        vertexData.applyToMesh(chunk);
+            const normals: number[] = [];
+            BABYLON.VertexData.ComputeNormals(subGeometry.vertices, subGeometry.triangleIndices, normals);
+            const vertexData = new BABYLON.VertexData();
+            vertexData.positions = subGeometry.vertices;
+            vertexData.indices = subGeometry.triangleIndices;
+            vertexData.normals = normals;
+            vertexData.uvs = subGeometry.uvs;
 
-        chunk.material = chunkMat;
+            vertexData.applyToMesh(subChunk);
 
-        /*
-        const mat = new BABYLON.StandardMaterial('mat', scene);
-        const texture = new BABYLON.Texture(packInfo.atlasImageUrl, scene);
-        mat.diffuseTexture = texture;
-
-        const faceUV = new Array<BABYLON.Vector4>(6);
-
-        const uvs = await packInfo.uvs(knownMaterials.block.top);
-
-        faceUV[0] = uvs.front;
-        faceUV[1] = uvs.back;
-        faceUV[2] = uvs.right;
-        faceUV[3] = uvs.left;
-        faceUV[4] = uvs.top;
-        faceUV[5] = uvs.bottom;
-
-        const options = {
-            faceUV: faceUV,
-            wrap: true
-        };
-
-        const box = BABYLON.MeshBuilder.CreateBox('box', options);
-        box.material = mat;
-        box.isVisible = false;
-
-        for (let x = -50; x <= 50; x++) {
-            for (let z = -50; z <= 50; z++) {
-                const boxInstance = box.createInstance('box_' + x + '_' + z);
-                boxInstance.position = new BABYLON.Vector3(x, 0, z);
-            }
+            multiChunkMat.subMaterials.push(chunkMat);
+            chunkMeshes.push(subChunk);
         }
-        */
+
+        const chunk = BABYLON.Mesh.MergeMeshes(chunkMeshes, true, true, undefined, true)!;
+        chunk.material = multiChunkMat;
+        chunk.subMeshes[1].materialIndex = 1;
 
         return scene;
     }

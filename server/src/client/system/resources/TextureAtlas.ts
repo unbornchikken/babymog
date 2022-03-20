@@ -87,16 +87,17 @@ export class TextureAtlas extends LoggerObject {
         }
 
         this.uvs = {};
-        const D = 1;
         for (const [id, coords] of Object.entries(apiResult.textures)) {
-            const x1 = coords.x + D;
-            const x2 = coords.x + coords.width - 1 - D;
-            const y1 = coords.y + coords.height - 1 - D;
-            const y2 = coords.y + D;
-            const x1s = scale(x1, maxX);
-            const x2s = scale(x2, maxX);
-            const y1s = 1 - scale(y1, maxY);
-            const y2s = 1 - scale(y2, maxY);
+            const x1 = coords.x;
+            const x2 = coords.x + coords.width - 1;
+            const y1 = coords.y + coords.height - 1;
+            const y2 = coords.y;
+            const WD = 1 / coords.width;
+            const HD = 1 / coords.height;
+            const x1s = scale(x1, maxX) + WD;
+            const x2s = scale(x2, maxX) - WD;
+            const y1s = (1 - scale(y1, maxY)) + HD;
+            const y2s = (1 - scale(y2, maxY)) - HD;
             this.uvs[id] = new BABYLON.Vector4(
                 x1s,
                 y1s,

@@ -2,6 +2,7 @@ import assert from 'assert';
 import { InternalError } from 'common/system/errors/InternalError';
 import { BlockCoord, blockCoordFunctions } from './BlockCoord';
 import type { Pile } from './Pile';
+import * as BABYLON from 'babylonjs';
 
 export const CHUNK_SIZE = 16;
 
@@ -17,6 +18,8 @@ export const chunkFunctions = {
     pileCoordToChunkCoord,
     getBlockMaterialPackIds,
     pileCoordToPileIndex,
+    chunkCoordsAround,
+    distanceInChunks,
 };
 
 function create(coord: BlockCoord, piles: Pile[]): Chunk {
@@ -55,18 +58,7 @@ function pileCoordToPileIndex(x: number, z: number) {
     assert(value < CHUNK_SIZE * CHUNK_SIZE);
     return value;
 }
-
-function pileCoordToChunkCoord(pileCoord: BlockCoord): BlockCoord;
-function pileCoordToChunkCoord(pile: Pile): BlockCoord;
-function pileCoordToChunkCoord(arg: Pile | BlockCoord): BlockCoord {
-    let coord: BlockCoord;
-    if ('coord' in arg) {
-        coord = arg.coord;
-    }
-    else {
-        coord = arg;
-    }
-
+function pileCoordToChunkCoord(coord: BlockCoord): BlockCoord {
     return blockCoordFunctions.create(conv(coord.x), conv(coord.z));
 
     function conv(value: number) {
@@ -90,4 +82,25 @@ function getBlockMaterialPackIds(chunk: Chunk) {
         }
     }
     return ids;
+}
+
+function* chunkCoordsAround(coord: BlockCoord, distance: number) {
+    const currentChunkPosVec = blockCoordFunctions.getVec2(pileCoordToChunkCoord(coord));
+    for (let x = -distance; x <= distance; x++) {
+        for (let z = -distance; z <= distance; z++) {
+            const xCoord = currentChunkPosVec.x + x * CHUNK_SIZE;
+            const zCoord = currentChunkPosVec.y + z * CHUNK_SIZE;
+            const dist = BABYLON.Vector2.Distance(currentChunkPosVec, new BABYLON.Vector2(xCoord, zCoord)) / CHUNK_SIZE;
+            if (dist <= distance) {
+                const chunkCoord = blockCoordFunctions.create(xCoord, zCoord);
+                yield chunkCoord;
+            }
+        }
+    }
+}
+
+function distanceInChunks(coord1: BlockCoord, coord2: BlockCoord) {
+    coord1 = pileCoordToChunkCoord(coord1);
+    coord2 = pileCoordToChunkCoord(coord2);
+    return BABYLON.Vector2.Distance(blockCoordFunctions.getVec2(coord1), blockCoordFunctions.getVec2(coord2)) / CHUNK_SIZE;
 }

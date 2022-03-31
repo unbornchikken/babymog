@@ -42,7 +42,7 @@ export class HackWorldDataInterface extends LoggerObject implements WorldDataInt
         const startOn = Date.now();
         chunk = chunkFunctions.create(coord, this.generatePiles(coord));
         this.chunks.set(key, chunk);
-        this.logger.debug('Chunk %s has been generated in %d ms.', blockCoordFunctions.toString(coord), Date.now() - startOn);
+        this.logger.trace('Chunk %s has been generated in %d ms.', blockCoordFunctions.toString(coord), Date.now() - startOn);
         return chunk;
     }
 

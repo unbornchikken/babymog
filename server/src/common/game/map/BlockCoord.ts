@@ -19,6 +19,8 @@ export const blockCoordFunctions = {
     getBack,
     equals,
     toString,
+    distance2D,
+    distance3D,
 };
 
 function create(vec: BABYLON.Vector3): BlockCoord;
@@ -113,4 +115,12 @@ function equals(coord1: BlockCoord, coord2: BlockCoord) {
 
 function toString(coord: BlockCoord) {
     return `${coord.x},${coord.y},${coord.z}`;
+}
+
+function distance2D(coord1: BlockCoord, coord2: BlockCoord) {
+    return BABYLON.Vector2.Distance(getVec2(coord1), getVec2(coord2));
+}
+
+function distance3D(coord1: BlockCoord, coord2: BlockCoord) {
+    return BABYLON.Vector3.Distance(getVec3(coord1), getVec3(coord2));
 }

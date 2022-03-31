@@ -1,7 +1,10 @@
+import EventEmitter from 'events';
 import type { Container } from './Container';
 
-export class DependentObject {
+export class DependentObject extends EventEmitter {
     constructor(container: Container) {
+        super();
+
         this.container = container;
     }
 

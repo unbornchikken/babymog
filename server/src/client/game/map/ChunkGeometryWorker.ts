@@ -7,7 +7,7 @@ import { chunkFunctions, CHUNK_SIZE } from 'common/game/map/Chunk';
 import { BlockMaterialManager } from '../materials/BlockMaterialManager';
 import { WorldManager } from 'common/game/map/WorldManager';
 import PQueue from 'p-queue';
-import type { Container } from 'common/system/ioc/Container';
+import type { WorkerMethodCall, WorkerMethodResult } from 'common/system/worker/WorkerThread';
 
 const DEF_UPDATE_BLOCK_SIZE = 4;
 
@@ -32,59 +32,30 @@ type PositionInputMessage = {
     coord: BlockCoord,
 };
 
-type GetChunkGeometriesInputMessage = {
-    type: 'getChunkGeometries',
-    coords: BlockCoord[],
+export type ChunkGeometryWorkerInputMessage = ParamsInputMessage | PositionInputMessage;
+
+export type GotoMethodArg = {
+    coord: BlockCoord,
+    visibleDistance: number,
 };
 
-export type ChunkGeometryWorkerInputMessage = ParamsInputMessage | PositionInputMessage | GetChunkGeometriesInputMessage;
-
-export type UpdatedChunk = {
+export type ChunkHeader = {
     coord: BlockCoord,
     updatedOn: number,
 };
 
-type UpdatedChunksOutputMessage = {
-    type: 'updatedChunks',
-    chunks: UpdatedChunk[],
-};
-
-export type ChunkGeomteryEntry = {
-    coord: BlockCoord,
-    geometry: ChunkGeometry,
-    updatedOn: number,
-};
-
-type ChunkGeometriesOutputMessage = {
-    type: 'chunkGeometries',
-    chunkGeometries: ChunkGeomteryEntry[],
-};
-
-export type ChunkGeometryWorkerOuputMessage = UpdatedChunksOutputMessage | ChunkGeometriesOutputMessage;
-
-export type ChunkGeometryWorkerOptions = {
-    container: Container,
-    updateBlockSize?: number,
-};
+export type ChunkGeometryData = Required<ChunkCell>;
 
 export class ChunkGeometryWorker extends LoggerObject {
-    constructor(options: ChunkGeometryWorkerOptions) {
-        super(options.container);
-
-        this.updateBlockSize = options.updateBlockSize ?? DEF_UPDATE_BLOCK_SIZE;
-    }
-
     private params?: Params;
 
-    private position?: BlockCoord;
+    private currentChunkPosition?: BlockCoord;
 
-    private cells: ChunkCell[] = [];
+    private cells: Map<string, ChunkCell> = new Map();
 
     private geometryBuilder?: ChunkGeometryBuilder;
 
     private q: PQueue = new PQueue({ concurrency: 1 });
-
-    private updateBlockSize: number;
 
     processMessage(e: any) {
         try {
@@ -96,9 +67,17 @@ export class ChunkGeometryWorker extends LoggerObject {
                 case 'position':
                     this.processPositionMessage(message);
                     break;
-                case 'getChunkGeometries':
-                    this.processGetGeometriesMessage(message);
-                    break;
+            }
+            const method = e.data as WorkerMethodCall<unknown>;
+            if (method.$methodCall) {
+                switch (method.$methodCall.methodName) {
+                    case 'goto':
+                        this.callGoto(method.$methodCall.id, method.$methodCall.arg as GotoMethodArg);
+                        break;
+                    case 'getGeometries':
+                        this.callGetGeometries(method.$methodCall.id, method.$methodCall.arg as BlockCoord[]);
+                        break;
+                }
             }
         }
         catch (err) {
@@ -110,7 +89,7 @@ export class ChunkGeometryWorker extends LoggerObject {
         this.enqueue('Params message processing', async () => {
             this.params = message;
             this.logger.debug('Parameters updated: %j', this.params);
-            this.cells.length = 0;
+            this.cells.clear();
             this.geometryBuilder = undefined;
             await this.updateCells();
         });
@@ -122,18 +101,66 @@ export class ChunkGeometryWorker extends LoggerObject {
         });
     }
 
-    private processGetGeometriesMessage(message: GetChunkGeometriesInputMessage) {
-        this.logger.debug('Providing geometries for %d chunk coords.', message.coords.length);
+    private callGoto(id: string, arg: GotoMethodArg) {
+        this.enqueue('Calling goto method', async () => {
+            try {
+                const result = await this.goto(arg.coord, arg.visibleDistance);
+                const resultMessage: WorkerMethodResult<ChunkHeader[], string> = {
+                    $methodResult: {
+                        id,
+                        methodName: 'goto',
+                        resultValue: result
+                    }
+                };
+                this.postMessage(resultMessage);
+            }
+            catch (err) {
+                this.logger.warn(err, 'goto method call failed.');
+                const resultMessage: WorkerMethodResult<ChunkHeader, string> = {
+                    $methodResult: {
+                        id,
+                        methodName: 'goto',
+                        error: err.message
+                    }
+                };
+                this.postMessage(resultMessage);
+            }
+        });
+    }
 
-        const response: ChunkGeometriesOutputMessage = {
-            type: 'chunkGeometries',
-            chunkGeometries: []
-        };
+    private callGetGeometries(id: string, arg: BlockCoord[]) {
+        try {
+            const result = this.getGeometries(arg);
+            const resultMessage: WorkerMethodResult<ChunkGeometryData[], string> = {
+                $methodResult: {
+                    id,
+                    methodName: 'getGeometries',
+                    resultValue: result
+                }
+            };
+            this.postMessage(resultMessage);
+        }
+        catch (err) {
+            this.logger.warn(err, 'getGeometries method call failed.');
+            const resultMessage: WorkerMethodResult<ChunkHeader, string> = {
+                $methodResult: {
+                    id,
+                    methodName: 'getGeometries',
+                    error: err.message
+                }
+            };
+            this.postMessage(resultMessage);
+        }
+    }
 
-        for (const coord of message.coords) {
-            const cell = this.getCell(coord);
+    getGeometries(coords: BlockCoord[]) {
+        const result: ChunkGeometryData[] = [];
+
+        for (const coord of coords) {
+            const key = blockCoordFunctions.toString(coord);
+            const cell = this.cells.get(key);
             if (cell && cell.geometry && cell.updatedOn) {
-                response.chunkGeometries.push({
+                result.push({
                     coord,
                     geometry: cell.geometry,
                     updatedOn: cell.updatedOn,
@@ -141,136 +168,92 @@ export class ChunkGeometryWorker extends LoggerObject {
             }
         }
 
-        if (response.chunkGeometries.length) {
-            this.logger.debug('%d geometries provided.', response.chunkGeometries.length);
-            this.postMessage(response);
-        }
-        else {
-            this.logger.warn('Cannot provide geometries.');
-        }
+        return result;
     }
 
-    private enqueue(what: string, fn: () => Promise<void>) {
-        this.q.add(fn).catch(err => this.logger.error(err, '%s failed.', what));
-    }
-
-    private getCell(coord: BlockCoord): ChunkCell | undefined {
-        for (const cell of this.cells) {
-            if (blockCoordFunctions.equals(cell.coord, coord)) {
-                return cell;
-            }
+    private async goto(coord: BlockCoord, visibleDistance?: number): Promise<ChunkHeader[]> {
+        const gotoChunkCoord = chunkFunctions.pileCoordToChunkCoord(coord);
+        if (!this.currentChunkPosition || !blockCoordFunctions.equals(this.currentChunkPosition, gotoChunkCoord)) {
+            this.currentChunkPosition = gotoChunkCoord;
+            this.logger.debug('Position updated: %j', this.currentChunkPosition);
+            return await this.updateCells(visibleDistance);
         }
-        return undefined;
+        return [];
     }
 
-    private async goto(coord: BlockCoord) {
-        const currentChunkCoord = this.position && chunkFunctions.pileCoordToChunkCoord(this.position);
-        if (!this.position || !blockCoordFunctions.equals(this.position, coord)) {
-            this.position = coord;
-            this.logger.debug('Position updated: %j', this.position);
-            const newChunkCoord = chunkFunctions.pileCoordToChunkCoord(this.position);
-            if (!currentChunkCoord || !blockCoordFunctions.equals(currentChunkCoord, newChunkCoord)) {
-                this.logger.debug('Chunk coord updated: %j', newChunkCoord);
-                await this.updateCells();
-            }
-        }
-    }
-
-    private async updateCells() {
-        if (!this.params || !this.position) {
-            return;
+    private async updateCells(visibleDistance?: number): Promise<ChunkHeader[]> {
+        if (!this.params || !this.currentChunkPosition) {
+            return [];
         }
 
         const params = this.params;
-        const position = this.position;
-        const newCells: ChunkCell[] = [];
-        const oldCells = new Map<string, ChunkCell>();
-        for (const cell of this.cells) {
-            oldCells.set(blockCoordFunctions.toString(cell.coord), cell);
-        }
+        const position = this.currentChunkPosition;
 
-        let hasEmpty = false;
         for (const chunkCoord of chunkFunctions.chunkCoordsAround(position, params.buildDistance)) {
-            let cell = oldCells.get(blockCoordFunctions.toString(chunkCoord));
+            const key = blockCoordFunctions.toString(chunkCoord);
+            let cell = this.cells.get(key);
             if (!cell) {
-                hasEmpty = true;
                 cell = { coord: chunkCoord };
             }
-            newCells.push(cell);
+            this.cells.set(key, cell);
         }
 
-        this.cells = newCells;
-        this.sortCells();
-        if (hasEmpty) {
-            await this.calculateCells();
-        }
+        return await this.calculateCells(visibleDistance);
     }
 
-    private async calculateCells() {
-        assert(this.cells.length);
+    private async calculateCells(visibleDistance?: number): Promise<ChunkHeader[]> {
+        assert(this.cells.size);
         assert(this.params);
 
-        this.logger.debug('Starting to calculate %s cells.', this.cells.length);
+        this.logger.debug('Starting to calculate %s cells.', this.cells.size);
 
-        const startOn = Date.now();
-
-        const chunksToSend: UpdatedChunk[] = [];
-        const sendMessages = () => {
-            if (chunksToSend.length) {
-                const updatedChunksMessage: UpdatedChunksOutputMessage = {
-                    chunks: chunksToSend,
-                    type: 'updatedChunks',
-                };
-                this.postMessage(updatedChunksMessage);
-                chunksToSend.length = 0;
+        const doCellUpdate = async (cell: ChunkCell) => {
+            if (!cell.geometry) {
+                const cellStartOn = Date.now();
+                await this.updateCellGeometry(cell);
+                this.logger.trace('Chunk cell %s updated in %d ms.', blockCoordFunctions.toString(cell.coord), Date.now() - cellStartOn);
             }
         };
 
-        let updates = 0;
-        for (const cell of this.cells) {
-            if (cell.geometry) {
-                continue;
+        const startOn = Date.now();
+        const remaining: ChunkCell[] = [];
+        const result: ChunkHeader[] = [];
+        for (const cell of this.cells.values()) {
+            const dist = chunkFunctions.distanceInChunks(this.currentChunkPosition!, cell.coord);
+            if (!visibleDistance || dist <= visibleDistance) {
+                await doCellUpdate(cell);
+                result.push({
+                    coord: cell.coord,
+                    updatedOn: cell.updatedOn!
+                });
             }
-
-            const cellStartOn = Date.now();
-            await this.updateCellGeometry(cell);
-            this.logger.trace('Chunk cell %s updated in %d ms.', blockCoordFunctions.toString(cell.coord), Date.now() - cellStartOn);
-            updates++;
-
-            chunksToSend.push({
-                coord: cell.coord,
-                updatedOn: cell.updatedOn!
-            });
-            if (chunksToSend.length === this.updateBlockSize) {
-                sendMessages();
+            else {
+                remaining.push(cell);
             }
         }
 
-        sendMessages();
+        this.logger.debug('Chunk cells updated in %d ms. Number of cells: %d, nember of updates: %d, remaining: %s', Date.now() - startOn, this.cells.size, result.length, remaining.length);
 
-        this.logger.debug('Chunk cells updated in %d ms. Number of cells: %d, nember of updates: %d', Date.now() - startOn, this.cells.length, updates);
-    }
+        if (remaining.length) {
+            this.enqueue(`Process ${remaining.length} remaining chunk geometry updates`, async () => {
+                const startOn = Date.now();
+                for (const cell of remaining) {
+                    await doCellUpdate(cell);
+                }
+                this.logger.debug('%d remaining chunk cells updated in %d ms.', remaining.length, Date.now() - startOn);
+            });
+        }
 
-    private sortCells() {
-        assert(this.cells.length);
-        assert(this.position);
-
-        this.cells.sort((a, b) => {
-            const distA = BABYLON.Vector2.Distance(
-                blockCoordFunctions.getVec2(this.position!),
-                blockCoordFunctions.getVec2(a.coord)
-            );
-            const distB = BABYLON.Vector2.Distance(
-                blockCoordFunctions.getVec2(this.position!),
-                blockCoordFunctions.getVec2(b.coord)
-            );
-            return distA - distB;
-        });
+        return result;
     }
 
     private async updateCellGeometry(cell: ChunkCell) {
         cell.geometry = await this.getGeometryBuilder().build(cell.coord);
         cell.updatedOn = Date.now();
+    }
+
+    private enqueue(what: string, fn: () => Promise<void>) {
+        this.q.add(fn).catch(err => this.logger.error(err, '%s failed.', what));
     }
 
     private postMessage(message: any) {

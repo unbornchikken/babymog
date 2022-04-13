@@ -1,82 +1,74 @@
 import assert from 'assert';
-import * as BABYLON from 'babylonjs';
+import type * as BABYLON from 'babylonjs';
 import { BlockCoord, blockCoordFunctions } from 'common/game/map/BlockCoord';
 import { chunkFunctions, CHUNK_SIZE } from 'common/game/map/Chunk';
 import { InternalError } from 'common/system/errors/InternalError';
 import type { Container } from 'common/system/ioc/Container';
 import { LoggerObject } from 'common/system/log/LoggerObject';
+import { MapEx } from 'common/system/MapEx';
 import type { WorkerThread } from 'common/system/worker/WorkerThread';
-import type { ChunkGeometryWorkerInputMessage, ChunkGeometryWorkerOuputMessage, ChunkGeomteryEntry, UpdatedChunk } from './ChunkGeometryWorker';
+import { Component } from '../../system/babylon/Component';
+import type { NodeWithPosition } from '../../system/babylon/coordinates';
+import type { ChunkGeometryData, ChunkGeometryWorkerInputMessage, ChunkHeader, GotoMethodArg } from './ChunkGeometryWorker';
 import { ChunkMeshBuilder } from './ChunkMeshBuilder';
 
 const DEF_VISIBLE_DISTANCE = 7;
 const DEF_BUILD_MORE_DISTANCE = 2;
+const DEF_CHUNK_DELETE_TIMEOUT = 60000;
 
 export type MapRendererOptions = {
     container: Container,
-    player: BABYLON.TransformNode,
+    player: NodeWithPosition,
     visibleDistance?: number,
     buildMoreDistance?: number,
+    chunkDeleteTimeout?: number,
 };
 
 type ChunkCell = {
     coord: BlockCoord,
     mesh: BABYLON.Mesh,
-    geometryUpdatedOn: number,
+    updatedOn: number,
 };
 
-export class MapRenderer extends LoggerObject implements BABYLON.Behavior<BABYLON.TransformNode> {
+export class MapRenderer extends Component<BABYLON.TransformNode> {
     constructor(options: MapRendererOptions) {
         super(options.container);
 
         this.player = options.player;
         this.visibleDistance = options.visibleDistance ?? DEF_VISIBLE_DISTANCE;
         this.buildMoreDistance = options.buildMoreDistance ?? DEF_BUILD_MORE_DISTANCE;
+        this.chunkDeleteTimeout = options.chunkDeleteTimeout ?? DEF_CHUNK_DELETE_TIMEOUT;
 
-        this.onPlayerPositionUpdatedCallback = () => this.onPlayerPositionUpdated();
         this.onWorkerMessageCallback = message => this.onWorkerMessage(message);
     }
 
-    get name() {
-        return this.constructor.name;
-    }
+    private player: NodeWithPosition;
 
-    private scene?: BABYLON.Scene;
-
-    private target?: BABYLON.TransformNode;
-
-    private player: BABYLON.TransformNode;
-
-    private lastPlayerBlockCoord?: BlockCoord;
+    private playerChunkPosition?: BlockCoord;
 
     private visibleDistance: number;
 
     private buildMoreDistance: number;
 
-    private lastPlayerCoord?: BlockCoord;
+    private chunkDeleteTimeout: number;
 
-    private cells: Map<string, ChunkCell> = new Map();
+    private cells: MapEx<string, ChunkCell> = new MapEx();
 
     private meshBuilder?: ChunkMeshBuilder;
+
+    private updatingChunks = false;
+
+    private moreUpdatesNeeded = false;
 
     private get playerCoord() {
         return blockCoordFunctions.create(this.player.position);
     }
 
-    private onPlayerPositionUpdatedCallback: () => void;
-
     private onWorkerMessageCallback: (message: any) => void;
 
-    init() {
-        // noop
-    }
-
-    attach(target: BABYLON.TransformNode) {
+    private attached() {
         // setup
         this.cells.clear();
-
-        this.target = target;
-        this.scene = target.getScene();
 
         const worker = this.getChunkGeometryWorker();
         worker.postMessage({
@@ -86,106 +78,138 @@ export class MapRenderer extends LoggerObject implements BABYLON.Behavior<BABYLO
         });
         worker.on('message', this.onWorkerMessageCallback);
 
-        this.player.onAfterWorldMatrixUpdateObservable.add(this.onPlayerPositionUpdatedCallback);
-
         // init
         this.updatePosition();
     }
 
-    detach() {
+    private detaching() {
         const worker = this.getChunkGeometryWorker();
         worker.removeListener('message', this.onWorkerMessageCallback);
-        this.player.onAfterWorldMatrixUpdateObservable.removeCallback(this.onPlayerPositionUpdatedCallback);
-        this.scene = undefined;
-        this.target = undefined;
+    }
+
+    private update() {
         this.updatePosition();
     }
 
-    private onPlayerPositionUpdated() {
-        this.updatePosition();
+    private onWorkerMessage(meesage: any) {
+        // noop yet
     }
 
     private updatePosition() {
-        const currentPlayerCoord = this.playerCoord;
-        if (!this.lastPlayerBlockCoord || !blockCoordFunctions.equals(currentPlayerCoord, this.lastPlayerBlockCoord)) {
-            this.logger.debug('Updating player position to %s.', blockCoordFunctions.toString(currentPlayerCoord));
-            this.getChunkGeometryWorker().postMessage({
-                type: 'position',
-                coord: currentPlayerCoord
-            });
-            this.lastPlayerBlockCoord = currentPlayerCoord;
-
-            this.hideFarChunks();
-            this.removeOldChunks();
+        const currentPlayerChunkPosition = chunkFunctions.pileCoordToChunkCoord(this.playerCoord);
+        if (!this.playerChunkPosition || !blockCoordFunctions.equals(currentPlayerChunkPosition, this.playerChunkPosition)) {
+            this.playerChunkPosition = currentPlayerChunkPosition;
+            void this.updateChunks();
         }
     }
 
-    private onWorkerMessage(message: any) {
-        const outMessage = message as ChunkGeometryWorkerOuputMessage;
-        switch (outMessage.type) {
-            case 'updatedChunks':
-                this.processUpdatedChunksWorkerMessage(outMessage.chunks);
-                return;
-            case 'chunkGeometries':
-                this.processChunkGeometriesWorkerMessage(outMessage.chunkGeometries);
-                break;
-            default:
-                throw new InternalError(`Unknown message: ${ JSON.stringify(message) }`);
+    private async updateChunks() {
+        if (this.updatingChunks) {
+            this.moreUpdatesNeeded = true;
         }
-    }
-
-    private processUpdatedChunksWorkerMessage(chunks: UpdatedChunk[]) {
-        this.logger.debug('Starting to process %d updated chunks.', chunks.length);
-
-        const playerChunkPosVec = blockCoordFunctions.getVec2(chunkFunctions.pileCoordToChunkCoord(this.playerCoord));
-        const coords = chunks
-            .filter(c => {
-                const dist = BABYLON.Vector2.Distance(playerChunkPosVec, blockCoordFunctions.getVec2(c.coord)) / CHUNK_SIZE;
-                if (dist <= this.visibleDistance) {
-                    const key = blockCoordFunctions.toString(c.coord);
-                    const cell = this.cells.get(key);
-                    if (!cell || cell.geometryUpdatedOn !== c.updatedOn) {
-                        return true;
-                    }
+        else {
+            this.updatingChunks = true;
+            try {
+                await this.doUpdateChunks();
+            }
+            catch (err) {
+                this.logger.error(err, 'Chunk update failed.');
+            }
+            finally {
+                this.updatingChunks = false;
+                if (this.moreUpdatesNeeded) {
+                    this.moreUpdatesNeeded = false;
+                    setImmediate(() => this.updateChunks());
                 }
-                return false;
-            })
-            .map(c => c.coord);
-
-        if (coords.length) {
-            this.logger.debug('Requesting geometries for %d visible chunks.', coords.length);
-
-            const message: ChunkGeometryWorkerInputMessage = {
-                type: 'getChunkGeometries',
-                coords
-            };
-
-            this.getChunkGeometryWorker().postMessage(message);
+            }
         }
     }
 
-    private processChunkGeometriesWorkerMessage(chunkGeometries: ChunkGeomteryEntry[]) {
-        this.logger.debug('Starting to process %d updated chunks.', chunkGeometries.length);
+    private async doUpdateChunks() {
+        assert(this.playerChunkPosition);
 
-        for (const entry of chunkGeometries) {
-            this.updateGeometry(entry);
+        const visibleChunkHeaders: ChunkHeader[] = await this.getChunkGeometryWorker().call<GotoMethodArg>('goto', {
+            coord: this.playerChunkPosition,
+            visibleDistance: this.visibleDistance,
+        });
+
+        const needToUpdateCoords: BlockCoord[] = [];
+
+        for (const chunkHeader of visibleChunkHeaders) {
+            const dist = chunkFunctions.distanceInChunks(chunkHeader.coord, this.playerChunkPosition);
+            if (dist <= this.visibleDistance) {
+                const key = blockCoordFunctions.toString(chunkHeader.coord);
+                const cell = this.cells.get(key);
+                if (!cell || cell.updatedOn !== chunkHeader.updatedOn) {
+                    needToUpdateCoords.push(chunkHeader.coord);
+                }
+            }
         }
+
+        const geometries: ChunkGeometryData[] = await this.getChunkGeometryWorker().call<BlockCoord[]>('getGeometries', needToUpdateCoords);
+        for (const chunkData of geometries) {
+            const dist = chunkFunctions.distanceInChunks(chunkData.coord, this.playerChunkPosition);
+            const visible = dist <= this.visibleDistance;
+            const key = blockCoordFunctions.toString(chunkData.coord);
+            let cell = this.cells.get(key);
+            if (cell) {
+                if (!visible) {
+                    this.deleteCell(key, cell);
+                }
+                else if (cell.updatedOn != chunkData.updatedOn) {
+                    const mesh = this.getMeshBuilder().build(chunkData.geometry, this.scene);
+                    mesh.parent = this.target;
+                    // TODO: all dispose to a free list
+                    cell.mesh.dispose();
+                    cell.mesh = mesh;
+                }
+            }
+            else if (visible) {
+                const mesh = this.getMeshBuilder().build(chunkData.geometry, this.scene);
+                mesh.parent = this.target;
+                cell = {
+                    coord: chunkData.coord,
+                    updatedOn: chunkData.updatedOn,
+                    mesh,
+                };
+                this.cells.set(key, cell);
+            }
+        }
+
+        for (const cell of this.cells.values()) {
+            const dist = chunkFunctions.distanceInChunks(cell.coord, this.playerChunkPosition);
+            const visible = dist <= this.visibleDistance;
+            if (visible) {
+                if (!cell.mesh.isEnabled()) {
+                    cell.mesh.setEnabled(true);
+                }
+            }
+            else {
+                this.deleteCell(undefined, cell);
+            }
+        }
+
+        this.logger.debug('%d chunks updated.', geometries.length);
     }
 
-    private updateGeometry(entry: ChunkGeomteryEntry) {
-        assert(this.scene);
-        assert(this.target);
-
-        const mesh = this.getMeshBuilder().build(entry.geometry, this.scene);
-        mesh.parent = this.target;
-    }
-
-    private hideFarChunks() {
-        // TODO
-    }
-
-    private removeOldChunks() {
-        // TODO
+    private deleteCell(key?: string, cell?: ChunkCell) {
+        if (!cell) {
+            assert(key);
+            cell = this.cells.get(key);
+        }
+        else if (!key) {
+            assert(cell);
+            key = blockCoordFunctions.toString(cell.coord);
+        }
+        if (cell) {
+            if (Date.now() - cell.updatedOn > this.chunkDeleteTimeout) {
+                cell.mesh.dispose();
+                this.cells.delete(key);
+            }
+            else if (cell.mesh.isEnabled()) {
+                cell.mesh.setEnabled(false);
+            }
+        }
     }
 
     private getChunkGeometryWorker() {

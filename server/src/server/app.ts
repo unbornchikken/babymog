@@ -9,6 +9,7 @@ import path from 'path';
 import { Container } from 'common/system/ioc/Container';
 import { MaterialDataManager } from './game/materials/MaterialDataManager';
 import { MaterialsApi } from './routes/MaterialsApi';
+import cors from 'cors';
 
 const GENERATED_CONTENT_MAX_AGE = 2592000000; // 30 days
 const PORT = 3000;
@@ -52,6 +53,7 @@ const app = container.get<Express>('app');
 const channels = container.get<WebSocketChannels>('channels');
 
 // Magic
+app.use(cors());
 app.use(express.json());
 app.use(expressLogger.log(container));
 

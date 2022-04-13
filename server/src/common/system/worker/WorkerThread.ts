@@ -25,20 +25,20 @@ export interface NativeWorker {
     removeListener(event: NativeWorkerEvent, cb: NativeWorkerEventHandler): void;
 }
 
-export type WorkerMethodCall = {
+export type WorkerMethodCall<T> = {
     $methodCall: {
         id: string,
         methodName: string,
-        args: any[]
+        arg: T
     }
 };
 
-export type WorkerMethodResult = {
+export type WorkerMethodResult<TResult, TError> = {
     $methodResult: {
         id: string,
         methodName: string,
-        resultValue?: any,
-        error?: any,
+        resultValue?: TResult,
+        error?: TError,
     }
 };
 
@@ -52,7 +52,7 @@ export class WorkerMethodCallError extends InternalError {
 }
 
 type OnGoingMethodCall = {
-    methodCall: WorkerMethodCall['$methodCall'],
+    methodCall: WorkerMethodCall<unknown>['$methodCall'],
     result: Deferred<any>
 };
 
@@ -85,11 +85,11 @@ export class WorkerThread extends LoggerObject {
         this.nativeWorker.postMessage(message);
     }
 
-    async call(methodName: string, ...args: any[]) {
-        const message: WorkerMethodCall = {
+    async call<T>(methodName: string, arg: T) {
+        const message: WorkerMethodCall<T> = {
             $methodCall: {
                 id: uuidv4(),
-                args,
+                arg,
                 methodName
             }
         };
@@ -114,7 +114,7 @@ export class WorkerThread extends LoggerObject {
 
     private onMessage(event: NativeWorkerMessage) {
         const data = event.data;
-        const methodResult = data?.$methodResult ? data as WorkerMethodResult : null;
+        const methodResult = data?.$methodResult ? data as WorkerMethodResult<unknown, unknown> : null;
         if (methodResult) {
             this.handleMethodResult(methodResult.$methodResult);
         }
@@ -123,7 +123,7 @@ export class WorkerThread extends LoggerObject {
         }
     }
 
-    private handleMethodResult(methodResult: WorkerMethodResult['$methodResult']) {
+    private handleMethodResult(methodResult: WorkerMethodResult<unknown, unknown>['$methodResult']) {
         const onGoingCall = this.onGoingMethosCalls.get(methodResult.id);
 
         if (!onGoingCall) {

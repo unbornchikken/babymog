@@ -22,7 +22,7 @@ function timeout<T>(
 	cancelFn: (() => void) | null = null) {
 	let timeoutId: ReturnType<typeof setTimeout> | null = null;
 	const promise = toPromise(promiseOrFunction);
-	const timeoutPromise = ms > 0 ? new Promise(resolve => { timeoutId = setTimeout(resolve, ms).unref(); }) : null;
+	const timeoutPromise = ms > 0 ? new Promise(resolve => { timeoutId = setTimeout(resolve, ms); }) : null;
 
 	return new Promise<T>((resolve, reject) => {
 		let done = false;

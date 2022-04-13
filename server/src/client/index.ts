@@ -14,6 +14,11 @@ import { MapRenderer } from './game/map/MapRenderer';
 import queryString from 'query-string';
 import { WorkerThread } from 'common/system/worker/WorkerThread';
 import { WebUIWorker } from './system/worker/WebUIWorker';
+import { coordinates } from './system/babylon/coordinates';
+import 'setimmediate';
+import assert from 'assert';
+
+assert(setImmediate);
 
 const parsedQueryString = queryString.parse(location.search);
 
@@ -35,7 +40,7 @@ container.register('ChunkDataInterface', c => new HackWorldDataInterface(c));
 //@ts-expect-error hack
 if (typeof WorkerGlobalScope !== 'undefined' && self instanceof WorkerGlobalScope) {
     if (parsedQueryString.worker === 'ChunkGeometryWorker') {
-        const workerImpl = new ChunkGeometryWorker({ container });
+        const workerImpl = new ChunkGeometryWorker(container);
         onmessage = e => workerImpl.processMessage(e);
     }
     else {
@@ -59,26 +64,11 @@ else {
 
             const camera = new BABYLON.ArcRotateCamera('camera1', -Math.PI / 2, Math.PI / 2.2, 5, new BABYLON.Vector3(0, 0, 0), scene);
             camera.attachControl(canvas, true);
+
             const light = new BABYLON.HemisphericLight('light', new BABYLON.Vector3(1, 1, 0), scene);
 
-            /*const geometryBuilder = new ChunkGeometryBuilder({
-                container,
-                materialManager: new BlockMaterialManager({ container }),
-                worldManager: new WorldManager({ container: container, worldId: 'pupu' })
-            });
-
-            const meshBuilder = new ChunkMeshBuilder(container);
-
-            let geometry = await geometryBuilder.build(blockCoordFunctions.create(0, 0));
-            meshBuilder.build(geometry, scene);
-            geometry = await geometryBuilder.build(blockCoordFunctions.create(-16, 0));
-            meshBuilder.build(geometry, scene);
-            geometry = await geometryBuilder.build(blockCoordFunctions.create(16, 0));
-            meshBuilder.build(geometry, scene);
-            */
-
             const node = new BABYLON.TransformNode('map', scene);
-            node.addBehavior(new MapRenderer({ container, player: node }));
+            node.addBehavior(new MapRenderer({ container, player: camera }));
 
             return scene;
         }
@@ -87,17 +77,4 @@ else {
     view.show().catch(err => {
         container.get<Logger>('logger').error(err, 'Showing view failed.');
     });
-
-    /*
-    const geometryWorker = new Worker('index.js?worker=ChunkGeometryWorker');
-    geometryWorker.postMessage({
-        type: 'params',
-        worldId: 'world1',
-        calculateDistance: 8,
-    });
-    geometryWorker.postMessage({
-        type: 'position',
-        coord: blockCoordFunctions.create(0, 0)
-    });
-    */
 }
